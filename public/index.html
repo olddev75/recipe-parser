@@ -3177,16 +3177,23 @@
       }
     }
 
+    function canManageRecipe(recipe) {
+      if (!recipe) return false;
+      // If user is logged in, they can manage recipes they created (or legacy unassigned recipes)
+      if (currentUser && currentUser.id) {
+        return !recipe.userId || recipe.userId === currentUser.id;
+      }
+      // When logged out, users cannot edit or delete recipes
+      return false;
+    }
+
     function renderRecipeOwnershipControls() {
       const editBtn = document.getElementById("editRecipeBtn");
       const deleteBtn = document.getElementById("deleteBtn");
 
       if (!activeRecipe) return;
 
-      // Show Edit/Delete buttons if:
-      // 1. Recipe has no userId (legacy / starter recipe), OR
-      // 2. Logged-in user matches activeRecipe.userId
-      const canManage = !activeRecipe.userId || (currentUser && currentUser.id === activeRecipe.userId);
+      const canManage = canManageRecipe(activeRecipe);
 
       if (editBtn) {
         if (canManage) editBtn.classList.remove("hidden");
@@ -5874,6 +5881,10 @@ function sanitizeAndExtractIngredient(ing) {
           ? `<span class="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 font-extrabold text-[10px] animate-pulse shrink-0">✨ NEW</span>`
           : '';
 
+        const sidebarDeleteBtn = canManageRecipe(r)
+          ? `<button onclick="deleteRecipe(${r.id}, event)" class="p-1 text-slate-500 hover:text-rose-400 text-xs transition cursor-pointer" title="${t("tipDeleteRecipe")}">✕</button>`
+          : '';
+
         return `
           <div onclick="loadSavedRecipe(${r.id})" class="flex items-center gap-3 p-2 rounded-xl cursor-pointer border transition group ${itemHighlightClass}" title="${t("tipOpenRecipe")}: ${r.title}">
             ${thumb}
@@ -5897,7 +5908,7 @@ function sanitizeAndExtractIngredient(ing) {
               <button onclick="toggleRecipeFavouriteById(${r.id}, event)" class="p-1 text-xs transition cursor-pointer" title="${r.isFavourite ? t("favourited") : t("favourite")}">
                 <span class="${r.isFavourite ? 'text-amber-400 text-sm' : 'text-slate-500 hover:text-amber-300'}">${r.isFavourite ? '⭐' : '☆'}</span>
               </button>
-              <button onclick="deleteRecipe(${r.id}, event)" class="p-1 text-slate-500 hover:text-rose-400 text-xs transition cursor-pointer" title="${t("tipDeleteRecipe")}">✕</button>
+              ${sidebarDeleteBtn}
             </div>
           </div>
         `;
