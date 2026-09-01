@@ -274,6 +274,25 @@
               <button id="btnImperial" onclick="setUnitSystem('imperial')" class="px-3 py-1.5 rounded-md text-slate-400 hover:text-white cursor-pointer" title="Show amounts in ounces and cups">Imperial (oz / cups)</button>
             </div>
 
+            <!-- Recipe Language Translator Dropdown -->
+            <div class="flex items-center gap-1.5 bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-700 text-xs shadow-sm">
+              <span class="text-xs text-amber-400">🌐</span>
+              <span id="translateRecipeLabel" class="text-slate-400 text-[11px] font-semibold hidden sm:inline">Translate:</span>
+              <select id="recipeTranslateSelect" onchange="translateActiveRecipe(this.value)" class="bg-transparent text-slate-200 text-xs font-semibold focus:outline-none cursor-pointer pr-1">
+                <option value="original" class="bg-slate-900 text-slate-100">Original Language</option>
+                <option value="es" class="bg-slate-900 text-slate-100">Español (Spanish)</option>
+                <option value="fr" class="bg-slate-900 text-slate-100">Français (French)</option>
+                <option value="de" class="bg-slate-900 text-slate-100">Deutsch (German)</option>
+                <option value="it" class="bg-slate-900 text-slate-100">Italiano (Italian)</option>
+                <option value="th" class="bg-slate-900 text-slate-100">ไทย (Thai)</option>
+                <option value="ja" class="bg-slate-900 text-slate-100">日本語 (Japanese)</option>
+                <option value="vi" class="bg-slate-900 text-slate-100">Tiếng Việt (Vietnamese)</option>
+                <option value="zh" class="bg-slate-900 text-slate-100">中文 (Chinese)</option>
+                <option value="pt" class="bg-slate-900 text-slate-100">Português (Portuguese)</option>
+                <option value="en" class="bg-slate-900 text-slate-100">English</option>
+              </select>
+            </div>
+
             <div class="flex items-center gap-2 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-700 text-xs">
               <span id="servingsLabelText" class="text-slate-400">Servings:</span>
               <button onclick="scaleServings(-1)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-amber-400 font-bold cursor-pointer" title="Make fewer servings">-</button>
@@ -4997,6 +5016,13 @@
       baseServings = recipe.servings || 4;
       currentServingsCount = baseServings;
       currentUnit = 'metric';
+      currentTranslationLang = null;
+      translationCache = {};
+      isViewingOriginal = true;
+
+      const translateSelect = document.getElementById("recipeTranslateSelect");
+      if (translateSelect) translateSelect.value = "original";
+
       checkedIngredients.clear();
       checkedInstructions.clear();
       cookStepIndex = 0;
@@ -5005,6 +5031,62 @@
       document.getElementById("recipeCard").classList.remove("hidden");
       
       renderRecipe();
+    }
+
+    async function translateActiveRecipe(targetLang) {
+      if (!activeRecipe) return;
+      const select = document.getElementById("recipeTranslateSelect");
+
+      if (targetLang === "original") {
+        if (originalRecipe) {
+          activeRecipe = JSON.parse(JSON.stringify(originalRecipe));
+          isViewingOriginal = true;
+          currentTranslationLang = null;
+          renderRecipe();
+          if (isCookModeActive) { renderCookMode(); renderCookDrawer(); }
+          showBackgroundNotification("info", "Restored original recipe text");
+        }
+        return;
+      }
+
+      // Check cache first
+      if (translationCache[targetLang]) {
+        activeRecipe = JSON.parse(JSON.stringify(translationCache[targetLang]));
+        isViewingOriginal = false;
+        currentTranslationLang = targetLang;
+        renderRecipe();
+        if (isCookModeActive) { renderCookMode(); renderCookDrawer(); }
+        showBackgroundNotification("success", `Loaded cached translation (${targetLang.toUpperCase()})`);
+        return;
+      }
+
+      showBackgroundNotification("info", `🌐 Translating recipe title, ingredients, and steps via AI...`);
+
+      try {
+        const res = await fetch("/api/translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            recipe: originalRecipe || activeRecipe,
+            targetLanguage: targetLang
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Translation failed");
+
+        translationCache[targetLang] = data.recipe;
+        activeRecipe = JSON.parse(JSON.stringify(data.recipe));
+        isViewingOriginal = false;
+        currentTranslationLang = targetLang;
+
+        renderRecipe();
+        if (isCookModeActive) { renderCookMode(); renderCookDrawer(); }
+        showBackgroundNotification("success", `✨ Recipe translated into ${targetLang.toUpperCase()} successfully!`);
+      } catch (err) {
+        showBackgroundNotification("error", "Translation error: " + err.message);
+        if (select) select.value = currentTranslationLang || "original";
+      }
     }
 
     /* ==========================================================================

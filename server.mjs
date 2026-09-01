@@ -1296,6 +1296,48 @@ app.put("/api/admin/users/:id/role", requireAdmin, async (req, res) => {
   }
 });
 
+// POST /api/translate — AI Recipe Translation Endpoint using Gemini
+app.post("/api/translate", async (req, res) => {
+  const { recipe, targetLanguage } = req.body || {};
+  if (!recipe || typeof recipe !== "object") {
+    return res.status(400).json({ error: "Recipe object is required for translation" });
+  }
+  if (!targetLanguage) {
+    return res.status(400).json({ error: "Target language code is required" });
+  }
+
+  const langMap = {
+    es: "Spanish",
+    fr: "French",
+    de: "German",
+    it: "Italian",
+    th: "Thai",
+    ja: "Japanese",
+    vi: "Vietnamese",
+    zh: "Mandarin Chinese",
+    pt: "Portuguese",
+    en: "English"
+  };
+
+  const targetLangName = langMap[targetLanguage] || targetLanguage;
+
+  try {
+    const prompt = `Translate the following culinary recipe completely into ${targetLangName} (${targetLanguage}). Preserve all numbers, quantities, units, structure, and original ingredient measurements accurately:\n\n${JSON.stringify(recipe, null, 2)}`;
+
+    const response = await generateRecipeContent(prompt);
+    let translated = JSON.parse(response.text);
+    translated = selfCheckAndVerifyRecipe(translated);
+
+    if (recipe.id) translated.id = recipe.id;
+    if (recipe.imageAttachment) translated.imageAttachment = recipe.imageAttachment;
+
+    res.json({ success: true, recipe: translated, targetLanguage });
+  } catch (err) {
+    console.error("Translation API error:", err);
+    res.status(500).json({ error: `Failed to translate recipe into ${targetLangName}` });
+  }
+});
+
 /* ==========================================================================
    TURSO CLOUD & LIBSQL RECIPE STORAGE API
    ========================================================================== */

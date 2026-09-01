@@ -7,8 +7,8 @@
 //     + offline fallback JSON error to toast in UI
 // =============================================================================
 
-const CACHE_NAME = "recipe-deck-v11";
-const RECIPES_CACHE = "recipe-deck-api-v11";
+const CACHE_NAME = "recipe-deck-v12";
+const RECIPES_CACHE = "recipe-deck-api-v12";
 
 const APP_SHELL = [
   "/",
