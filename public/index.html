@@ -4779,6 +4779,7 @@
        RECIPE PARSING & INGESTION
        ========================================================================== */
     async function handleParseText() {
+      if (_checkOffline()) return;
       if (!currentUser) {
         showBackgroundNotification("warning", "Please sign in to add and parse new recipes!");
         return openAuthModal("login");
@@ -6311,6 +6312,10 @@ function sanitizeAndExtractIngredient(ing) {
         if (authModal && !authModal.classList.contains("hidden")) {
           closeAuthModal();
         }
+        const profileModal = document.getElementById("profileModal");
+        if (profileModal && !profileModal.classList.contains("hidden")) {
+          closeProfileModal();
+        }
       }
     });
 
@@ -6378,37 +6383,13 @@ function sanitizeAndExtractIngredient(ing) {
     window.addEventListener("offline", syncOnlineStatus);
     syncOnlineStatus(); // Set initial state on load
 
-    // ── Offline Guard for AI / Scrape actions ─────────────────────────────────
-    // Wrap parse/scrape calls to show toast if device is offline before fetch
-    const _originalHandleParseText  = typeof handleParseText  === "function" ? handleParseText  : null;
-    const _originalHandleParseImage = typeof handleParseImage === "function" ? handleParseImage : null;
-    const _originalHandleScrapeUrl  = typeof handleScrapeUrl  === "function" ? handleScrapeUrl  : null;
-
+    // ── Online / Offline Guard for AI / Scrape actions ───────────────────────
     function _checkOffline() {
       if (!navigator.onLine) {
         showBackgroundNotification("warning", t("offlineAiWarning") || "📵 Offline — AI import requires internet.");
         return true;
       }
       return false;
-    }
-
-    if (_originalHandleParseText) {
-      window.handleParseText = function() {
-        if (_checkOffline()) return;
-        return _originalHandleParseText.apply(this, arguments);
-      };
-    }
-    if (_originalHandleParseImage) {
-      window.handleParseImage = function() {
-        if (_checkOffline()) return;
-        return _originalHandleParseImage.apply(this, arguments);
-      };
-    }
-    if (_originalHandleScrapeUrl) {
-      window.handleScrapeUrl = function() {
-        if (_checkOffline()) return;
-        return _originalHandleScrapeUrl.apply(this, arguments);
-      };
     }
   </script>
 </body>
