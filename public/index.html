@@ -1593,9 +1593,34 @@
         const res = await fetch("/api/recipes");
         if (res.ok) {
           const data = await res.json();
-          cachedSavedRecipes = data;
-          localStorage.setItem("recipe_deck_items", JSON.stringify(data));
-          return data;
+          if (Array.isArray(data) && data.length > 0) {
+            cachedSavedRecipes = data;
+            localStorage.setItem("recipe_deck_items", JSON.stringify(data));
+            return data;
+          }
+          // If server returned 0 recipes but localStorage has items, sync local items to server
+          const local = getStoredRecipes();
+          if (Array.isArray(local) && local.length > 0) {
+            for (const item of local) {
+              try {
+                await fetch("/api/recipes", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(item)
+                });
+              } catch (err) {}
+            }
+            const syncRes = await fetch("/api/recipes");
+            if (syncRes.ok) {
+              const syncData = await syncRes.json();
+              cachedSavedRecipes = syncData;
+              localStorage.setItem("recipe_deck_items", JSON.stringify(syncData));
+              return syncData;
+            }
+          }
+          cachedSavedRecipes = data || [];
+          localStorage.setItem("recipe_deck_items", JSON.stringify(cachedSavedRecipes));
+          return cachedSavedRecipes;
         }
       } catch (e) {
         console.warn("Using local cached recipes:", e);

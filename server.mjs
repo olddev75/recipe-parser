@@ -5,19 +5,25 @@ import "dotenv/config";
 import sqlite3 from "sqlite3";
 import { open } from "sqlite";
 
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const dbPath = path.join(__dirname, "recipes.db");
+
 const app = express();
 const port = 3000;
 
 app.use(cors());
 // Increased limit to handle high-res screenshot uploads and image attachments
 app.use(express.json({ limit: "50mb" }));
-app.use(express.static("public"));
+app.use(express.static(path.join(__dirname, "public")));
 
 // Initialize SQLite database
 let db;
 async function initDb() {
   db = await open({
-    filename: "./recipes.db",
+    filename: dbPath,
     driver: sqlite3.Database
   });
 
@@ -42,6 +48,86 @@ async function initDb() {
     await db.exec("ALTER TABLE recipes ADD COLUMN tags TEXT;");
   } catch (e) {
     // Column already exists or table created with it
+  }
+
+  // Seed default starter recipes if database is fresh/empty
+  const countRow = await db.get("SELECT COUNT(*) as count FROM recipes");
+  if (countRow && countRow.count === 0) {
+    const starterRecipes = [
+      {
+        title: "Pad Thai Gai (Thai Stir-Fried Noodles)",
+        servings: 2,
+        prepTimeMinutes: 15,
+        cookTimeMinutes: 15,
+        tags: ["Chicken", "High-Protein", "Thai", "30-Minute"],
+        ingredients: [
+          { name: "chicken breast (thinly sliced)", quantity: 250, unit: "g" },
+          { name: "flat rice noodles", quantity: 200, unit: "g" },
+          { name: "eggs", quantity: 2, unit: "whole" },
+          { name: "bean sprouts", quantity: 100, unit: "g" },
+          { name: "crushed roasted peanuts", quantity: 30, unit: "g" },
+          { name: "tamarind paste", quantity: 2, unit: "tbsp" },
+          { name: "fish sauce", quantity: 2, unit: "tbsp" },
+          { name: "palm sugar or brown sugar", quantity: 1.5, unit: "tbsp" },
+          { name: "garlic cloves (minced)", quantity: 3, unit: "cloves" },
+          { name: "vegetable oil", quantity: 2, unit: "tbsp" },
+          { name: "lime wedges", quantity: 1, unit: "whole" }
+        ],
+        instructions: [
+          "Soak rice noodles in warm water for 15-20 minutes until pliable but firm, then drain thoroughly.",
+          "Whisk tamarind paste, fish sauce, and sugar in a small bowl to make the Pad Thai sauce.",
+          "Heat 1 tbsp vegetable oil in a wok over high heat. Add minced garlic and sliced chicken; stir-fry for 3-4 minutes until cooked through.",
+          "Push chicken to the side, add remaining oil, crack in the eggs and scramble quickly for 1 minute.",
+          "Add drained noodles and sauce. Toss vigorously on high heat for 2 minutes until noodles absorb sauce and turn glossy.",
+          "Toss in fresh bean sprouts and green onions for 30 seconds. Remove from heat and serve hot garnished with crushed peanuts and lime wedges."
+        ]
+      },
+      {
+        title: "Creamy Tuscan Garlic Chicken",
+        servings: 4,
+        prepTimeMinutes: 10,
+        cookTimeMinutes: 20,
+        tags: ["Chicken", "Keto", "Italian", "30-Minute", "Low-Carb"],
+        ingredients: [
+          { name: "boneless chicken breasts", quantity: 600, unit: "g" },
+          { name: "heavy whipping cream", quantity: 240, unit: "ml" },
+          { name: "chicken broth", quantity: 120, unit: "ml" },
+          { name: "fresh baby spinach", quantity: 150, unit: "g" },
+          { name: "sun-dried tomatoes (drained and sliced)", quantity: 75, unit: "g" },
+          { name: "garlic cloves (minced)", quantity: 4, unit: "cloves" },
+          { name: "grated parmesan cheese", quantity: 60, unit: "g" },
+          { name: "olive oil", quantity: 2, unit: "tbsp" },
+          { name: "Italian seasoning", quantity: 1, unit: "tsp" },
+          { name: "salt and black pepper", quantity: 1, unit: "pinch" }
+        ],
+        instructions: [
+          "Season chicken breasts generously with Italian seasoning, salt, and freshly cracked black pepper.",
+          "Heat olive oil in a large skillet over medium-high heat. Sear chicken for 6-8 minutes per side until golden brown and cooked through (internal temp 165°F / 74°C). Transfer to a plate.",
+          "In the same skillet, reduce heat to medium and add minced garlic; sauté for 1 minute until fragrant.",
+          "Pour in chicken broth, heavy cream, and sliced sun-dried tomatoes. Bring to a gentle simmer for 3-4 minutes until slightly thickened.",
+          "Stir in grated parmesan cheese until melted and smooth, then add fresh baby spinach and simmer for 2 minutes until wilted.",
+          "Return cooked chicken breasts back into the pan and spoon rich Tuscan cream sauce over the top. Serve immediately."
+        ]
+      }
+    ];
+
+    for (const r of starterRecipes) {
+      await db.run(
+        `INSERT INTO recipes (title, servings, prepTimeMinutes, cookTimeMinutes, ingredients, instructions, tags, imageAttachment)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          r.title,
+          r.servings,
+          r.prepTimeMinutes,
+          r.cookTimeMinutes,
+          JSON.stringify(r.ingredients),
+          JSON.stringify(r.instructions),
+          JSON.stringify(r.tags),
+          null
+        ]
+      );
+    }
+    console.log("🌱 Seeded initial starter recipes into SQLite database");
   }
 
   console.log("📦 SQLite database initialized (recipes.db)");
