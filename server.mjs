@@ -619,6 +619,64 @@ async function generateRecipeContent(contents, config = {}) {
   throw lastErr || new Error("Failed to parse recipe with all Gemini models");
 }
 
+// Heuristic offline text parser for fallback when Gemini AI API is unreachable
+function parseRecipeTextHeuristic(rawText) {
+  const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (!lines.length) return null;
+
+  let title = lines[0].replace(/^[#*-\s]+/, '').replace(/recipe:?/i, '').trim();
+  if (title.length < 3) title = "Parsed Recipe";
+
+  const ingredients = [];
+  const instructions = [];
+  let currentSection = "ingredients";
+
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    const lower = line.toLowerCase();
+
+    if (lower.includes("instruction") || lower.includes("method") || lower.includes("direction") || lower.includes("step")) {
+      currentSection = "instructions";
+      continue;
+    }
+    if (lower.includes("ingredient")) {
+      currentSection = "ingredients";
+      continue;
+    }
+
+    if (currentSection === "ingredients") {
+      const cleanIng = line.replace(/^[•*-\d.\s]+/, '').trim();
+      if (cleanIng) {
+        ingredients.push({ name: cleanIng, quantity: 1, unit: "", substitutions: [] });
+      }
+    } else {
+      const cleanInst = line.replace(/^[•*-\d.\s]+/, '').trim();
+      if (cleanInst) {
+        instructions.push(cleanInst);
+      }
+    }
+  }
+
+  if (!ingredients.length && instructions.length) {
+    ingredients.push({ name: "See instructions for details", quantity: 1, unit: "", substitutions: [] });
+  }
+  if (!instructions.length && ingredients.length) {
+    instructions.push("Mix all ingredients together and cook as desired.");
+  }
+
+  return {
+    title,
+    servings: 4,
+    prepTimeMinutes: 10,
+    cookTimeMinutes: 15,
+    difficulty: "Easy",
+    rating: 0,
+    tags: ["Home Cooking"],
+    ingredients: ingredients.length ? ingredients : [{ name: "Ingredients list", quantity: 1, unit: "", substitutions: [] }],
+    instructions: instructions.length ? instructions : ["Follow recipe instructions."]
+  };
+}
+
 // Text Parser Endpoint
 app.post("/api/parse", async (req, res) => {
   const { rawText } = req.body;
@@ -633,8 +691,13 @@ app.post("/api/parse", async (req, res) => {
     parsed = selfCheckAndVerifyRecipe(parsed, rawText);
     res.json(parsed);
   } catch (err) {
-    console.error("API error:", err);
-    res.status(500).json({ error: "Failed to parse recipe text" });
+    console.warn("[Text Parser] Gemini AI fetch failed, using heuristic offline parser:", err.message);
+    const fallback = parseRecipeTextHeuristic(rawText);
+    if (fallback) {
+      const verifiedFallback = selfCheckAndVerifyRecipe(fallback, rawText);
+      return res.json(verifiedFallback);
+    }
+    res.status(500).json({ error: "Failed to parse recipe text. Please check network connection." });
   }
 });
 
