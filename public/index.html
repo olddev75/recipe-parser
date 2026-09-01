@@ -4149,28 +4149,222 @@
       }
     }
 
-    function getScaledIngredientDisplay(item) {
+
+const standardUnitMap = {
+  "g": "g", "gram": "g", "grams": "g", "g.": "g", "gr": "g",
+  "kg": "kg", "kilogram": "kg", "kilograms": "kg", "kg.": "kg",
+  "ml": "ml", "milliliter": "ml", "milliliters": "ml", "ml.": "ml",
+  "l": "l", "liter": "l", "litres": "l", "liters": "l", "l.": "l",
+  "tsp": "tsp", "teaspoon": "tsp", "teaspoons": "tsp", "tsp.": "tsp", "t.": "tsp",
+  "tbsp": "tbsp", "tablespoon": "tbsp", "tablespoons": "tbsp", "tbsp.": "tbsp", "tbs": "tbsp", "tbs.": "tbsp", "t.": "tbsp",
+  "cup": "cup", "cups": "cup", "c.": "cup", "c": "cup",
+  "oz": "oz", "ounce": "oz", "ounces": "oz", "oz.": "oz",
+  "fl oz": "fl oz", "floz": "fl oz", "fluid ounce": "fl oz", "fluid ounces": "fl oz", "fl. oz.": "fl oz",
+  "lb": "lb", "pound": "lb", "pounds": "lb", "lbs": "lb", "lbs.": "lb",
+  "pt": "pt", "pint": "pt", "pints": "pt",
+  "qt": "qt", "quart": "qt", "quarts": "qt",
+  "gal": "gal", "gallon": "gal", "gallons": "gal",
+  "clove": "clove", "cloves": "cloves",
+  "piece": "piece", "pieces": "pieces", "pcs": "pieces", "pc": "piece",
+  "slice": "slice", "slices": "slices",
+  "pinch": "pinch", "pinches": "pinch", "dash": "dash",
+  "can": "can", "cans": "cans",
+  "stalk": "stalk", "stalks": "stalks",
+  "bunch": "bunch", "bunches": "bunch",
+  "sprig": "sprig", "sprigs": "sprigs",
+  "medium": "medium", "large": "large", "small": "small"
+};
+
+const fractionMap = {
+  "1/2": 0.5, "½": 0.5,
+  "1/4": 0.25, "¼": 0.25,
+  "3/4": 0.75, "¾": 0.75,
+  "1/3": 0.333, "⅓": 0.333,
+  "2/3": 0.667, "⅔": 0.667,
+  "1/8": 0.125, "⅛": 0.125,
+  "3/8": 0.375, "⅜": 0.375,
+  "5/8": 0.625, "⅝": 0.625,
+  "7/8": 0.875, "⅞": 0.875
+};
+
+function parseQuantityString(str) {
+  if (!str) return null;
+  str = String(str).trim();
+  if (str.includes("-")) {
+    const parts = str.split("-");
+    const p1 = parseQuantityString(parts[0]);
+    const p2 = parseQuantityString(parts[1]);
+    if (p1 && p2) return (p1 + p2) / 2;
+  }
+  let total = 0;
+  const tokens = str.split(/\s+/);
+  for (const tok of tokens) {
+    if (fractionMap[tok]) {
+      total += fractionMap[tok];
+    } else if (tok.includes("/")) {
+      const [n, d] = tok.split("/").map(Number);
+      if (d) total += n / d;
+    } else {
+      const num = parseFloat(tok);
+      if (!isNaN(num)) total += num;
+    }
+  }
+  return total > 0 ? Math.round(total * 100) / 100 : null;
+}
+
+function sanitizeAndExtractIngredient(ing) {
+  let name = "";
+  let qty = null;
+  let unit = "";
+  let substitutions = [];
+
+  if (typeof ing === "string") {
+    name = ing;
+  } else if (ing && typeof ing === "object") {
+    name = String(ing.name || "");
+    qty = ing.quantity;
+    unit = String(ing.unit || "").trim().toLowerCase();
+    substitutions = Array.isArray(ing.substitutions) ? ing.substitutions : [];
+  }
+
+  name = name
+    .replace(/&bull;|•|·|▪|▫|–|—|\*|\+/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&frac12;|½/g, " 1/2 ")
+    .replace(/&frac14;|¼/g, " 1/4 ")
+    .replace(/&frac34;|¾/g, " 3/4 ")
+    .replace(/&frac13;|⅓/g, " 1/3 ")
+    .replace(/&frac23;|⅔/g, " 2/3 ")
+    .replace(/&frac18;|⅛/g, " 1/8 ")
+    .replace(/<[^>]*>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const pattern = /^((?:\d+\s+)?\d+\/\d+|\d+(?:\.\d+)?|\d+\s*-\s*\d+)\s*(?:([a-zA-Z\.\s]+?)(?:\s+of\b|\s+))?(.*)$/;
+  const match = name.match(pattern);
+
+  if (match) {
+    const rawQtyStr = match[1];
+    const candidateUnit = (match[2] || "").trim().toLowerCase();
+    const candidateName = (match[3] || "").trim();
+
+    if (standardUnitMap[candidateUnit]) {
+      const parsedQty = parseQuantityString(rawQtyStr);
+      if (parsedQty !== null) {
+        qty = parsedQty;
+        unit = standardUnitMap[candidateUnit];
+        name = candidateName;
+      }
+    } else if (!unit || unit === "item" || unit === "whole" || unit === "piece") {
+      const parsedQty = parseQuantityString(rawQtyStr);
+      if (parsedQty !== null) {
+        qty = parsedQty;
+        const combined = (candidateUnit ? candidateUnit + " " : "") + candidateName;
+        const words = combined.split(/\s+/);
+        const firstWord = words[0]?.toLowerCase().replace(/\.$/, "");
+        const twoWords = (words[0] + " " + (words[1] || "")).toLowerCase().replace(/\.$/, "");
+
+        if (standardUnitMap[twoWords]) {
+          unit = standardUnitMap[twoWords];
+          name = words.slice(2).join(" ");
+        } else if (standardUnitMap[firstWord]) {
+          unit = standardUnitMap[firstWord];
+          name = words.slice(1).join(" ");
+        } else {
+          name = combined;
+          if (!unit || unit === "item") unit = "";
+        }
+      }
+    }
+  }
+
+  if (typeof qty === "string") {
+    qty = parseQuantityString(qty);
+  }
+  if (typeof qty !== "number" || isNaN(qty) || qty <= 0) {
+    qty = 1;
+  }
+
+  if (unit && standardUnitMap[unit]) {
+    unit = standardUnitMap[unit];
+  } else if (unit === "item") {
+    unit = "";
+  }
+
+  name = name.replace(/^of\s+/i, "").trim();
+
+  return {
+    name: name || "Ingredient",
+    quantity: Math.round(qty * 100) / 100,
+    unit: unit || "",
+    substitutions
+  };
+}
+
+    function getScaledIngredientDisplay(rawItem) {
+      const item = sanitizeAndExtractIngredient(rawItem);
       const scaleRatio = currentServingsCount / (baseServings || 1);
-      let qty = item.quantity ? (item.quantity * scaleRatio) : null;
-      let unit = item.unit || "";
+      let qty = (item.quantity !== null && item.quantity !== undefined) ? (item.quantity * scaleRatio) : null;
+      let unit = (item.unit || "").trim().toLowerCase();
 
       if (qty !== null && unit) {
-        const lowerUnit = unit.toLowerCase();
-        if (currentUnit === 'imperial') {
-          if (lowerUnit === 'g' || lowerUnit === 'grams') {
-            qty = (qty * CONVERSIONS.g_to_oz).toFixed(1);
-            unit = 'oz';
-          } else if (lowerUnit === 'ml' || lowerUnit === 'milliliters') {
-            qty = (qty * CONVERSIONS.ml_to_floz).toFixed(1);
-            unit = 'fl oz';
-          }
-        } else if (currentUnit === 'metric') {
-          if (lowerUnit === 'oz' || lowerUnit === 'ounces') {
-            qty = Math.round(qty * CONVERSIONS.oz_to_g);
+        if (currentUnit === 'metric') {
+          // Imperial to Metric conversions
+          if (unit === 'lb' || unit === 'lbs' || unit === 'pound' || unit === 'pounds') {
+            const grams = qty * 453.592;
+            if (grams >= 1000) {
+              qty = Number((grams / 1000).toFixed(2));
+              unit = 'kg';
+            } else {
+              qty = Math.round(grams);
+              unit = 'g';
+            }
+          } else if (unit === 'oz' || unit === 'ounce' || unit === 'ounces') {
+            qty = Math.round(qty * 28.3495);
             unit = 'g';
-          } else if (lowerUnit === 'fl oz' || lowerUnit === 'fluid ounces') {
-            qty = Math.round(qty * CONVERSIONS.floz_to_ml);
+          } else if (unit === 'fl oz' || unit === 'floz' || unit === 'fluid ounce' || unit === 'fluid ounces') {
+            qty = Math.round(qty * 29.5735);
             unit = 'ml';
+          } else if (unit === 'cup' || unit === 'cups') {
+            qty = Math.round(qty * 240);
+            unit = 'ml';
+          } else if (unit === 'pt' || unit === 'pint' || unit === 'pints') {
+            qty = Math.round(qty * 473.176);
+            unit = 'ml';
+          } else if (unit === 'qt' || unit === 'quart' || unit === 'quarts') {
+            qty = Number((qty * 0.946353).toFixed(2));
+            unit = 'l';
+          } else if (unit === 'gal' || unit === 'gallon' || unit === 'gallons') {
+            qty = Number((qty * 3.78541).toFixed(2));
+            unit = 'l';
+          }
+        } else if (currentUnit === 'imperial') {
+          // Metric to Imperial conversions
+          if (unit === 'g' || unit === 'gram' || unit === 'grams') {
+            const oz = qty * 0.035274;
+            if (oz >= 16) {
+              qty = Number((oz / 16).toFixed(2));
+              unit = 'lb';
+            } else {
+              qty = Number(oz.toFixed(1));
+              unit = 'oz';
+            }
+          } else if (unit === 'kg' || unit === 'kilogram' || unit === 'kilograms') {
+            qty = Number((qty * 2.20462).toFixed(2));
+            unit = 'lb';
+          } else if (unit === 'ml' || unit === 'milliliter' || unit === 'milliliters') {
+            if (qty >= 120) {
+              qty = Number((qty / 240).toFixed(2));
+              unit = 'cup';
+            } else {
+              qty = Number((qty * 0.033814).toFixed(1));
+              unit = 'fl oz';
+            }
+          } else if (unit === 'l' || unit === 'liter' || unit === 'liters' || unit === 'litre' || unit === 'litres') {
+            qty = Number((qty * 4.22675).toFixed(2));
+            unit = 'cup';
           }
         }
       }
@@ -4188,6 +4382,8 @@
     // Intelligent Client-side Self Check Validator
     function runClientSelfCheck(recipe) {
       if (!recipe) return recipe;
+      if (Array.isArray(recipe.ingredients)) recipe.ingredients = recipe.ingredients.map(sanitizeAndExtractIngredient);
+      if (Array.isArray(recipe.ingredients)) recipe.ingredients = recipe.ingredients.map(sanitizeAndExtractIngredient);
       
       // Auto-calibrate times if missing
       if ((!recipe.cookTimeMinutes || recipe.cookTimeMinutes === 0) && Array.isArray(recipe.instructions)) {

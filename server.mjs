@@ -20,6 +20,160 @@ app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
+const standardUnitMap = {
+  "g": "g", "gram": "g", "grams": "g", "g.": "g", "gr": "g",
+  "kg": "kg", "kilogram": "kg", "kilograms": "kg", "kg.": "kg",
+  "ml": "ml", "milliliter": "ml", "milliliters": "ml", "ml.": "ml",
+  "l": "l", "liter": "l", "litres": "l", "liters": "l", "l.": "l",
+  "tsp": "tsp", "teaspoon": "tsp", "teaspoons": "tsp", "tsp.": "tsp", "t.": "tsp",
+  "tbsp": "tbsp", "tablespoon": "tbsp", "tablespoons": "tbsp", "tbsp.": "tbsp", "tbs": "tbsp", "tbs.": "tbsp", "t.": "tbsp",
+  "cup": "cup", "cups": "cup", "c.": "cup", "c": "cup",
+  "oz": "oz", "ounce": "oz", "ounces": "oz", "oz.": "oz",
+  "fl oz": "fl oz", "floz": "fl oz", "fluid ounce": "fl oz", "fluid ounces": "fl oz", "fl. oz.": "fl oz",
+  "lb": "lb", "pound": "lb", "pounds": "lb", "lbs": "lb", "lbs.": "lb",
+  "pt": "pt", "pint": "pt", "pints": "pt",
+  "qt": "qt", "quart": "qt", "quarts": "qt",
+  "gal": "gal", "gallon": "gal", "gallons": "gal",
+  "clove": "clove", "cloves": "cloves",
+  "piece": "piece", "pieces": "pieces", "pcs": "pieces", "pc": "piece",
+  "slice": "slice", "slices": "slices",
+  "pinch": "pinch", "pinches": "pinch", "dash": "dash",
+  "can": "can", "cans": "cans",
+  "stalk": "stalk", "stalks": "stalks",
+  "bunch": "bunch", "bunches": "bunch",
+  "sprig": "sprig", "sprigs": "sprigs",
+  "medium": "medium", "large": "large", "small": "small"
+};
+
+const fractionMap = {
+  "1/2": 0.5, "½": 0.5,
+  "1/4": 0.25, "¼": 0.25,
+  "3/4": 0.75, "¾": 0.75,
+  "1/3": 0.333, "⅓": 0.333,
+  "2/3": 0.667, "⅔": 0.667,
+  "1/8": 0.125, "⅛": 0.125,
+  "3/8": 0.375, "⅜": 0.375,
+  "5/8": 0.625, "⅝": 0.625,
+  "7/8": 0.875, "⅞": 0.875
+};
+
+function parseQuantityString(str) {
+  if (!str) return null;
+  str = String(str).trim();
+  if (str.includes("-")) {
+    const parts = str.split("-");
+    const p1 = parseQuantityString(parts[0]);
+    const p2 = parseQuantityString(parts[1]);
+    if (p1 && p2) return (p1 + p2) / 2;
+  }
+  let total = 0;
+  const tokens = str.split(/\s+/);
+  for (const tok of tokens) {
+    if (fractionMap[tok]) {
+      total += fractionMap[tok];
+    } else if (tok.includes("/")) {
+      const [n, d] = tok.split("/").map(Number);
+      if (d) total += n / d;
+    } else {
+      const num = parseFloat(tok);
+      if (!isNaN(num)) total += num;
+    }
+  }
+  return total > 0 ? Math.round(total * 100) / 100 : null;
+}
+
+function sanitizeAndExtractIngredient(ing) {
+  let name = "";
+  let qty = null;
+  let unit = "";
+  let substitutions = [];
+
+  if (typeof ing === "string") {
+    name = ing;
+  } else if (ing && typeof ing === "object") {
+    name = String(ing.name || "");
+    qty = ing.quantity;
+    unit = String(ing.unit || "").trim().toLowerCase();
+    substitutions = Array.isArray(ing.substitutions) ? ing.substitutions : [];
+  }
+
+  name = name
+    .replace(/&bull;|•|·|▪|▫|–|—|\*|\+/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&frac12;|½/g, " 1/2 ")
+    .replace(/&frac14;|¼/g, " 1/4 ")
+    .replace(/&frac34;|¾/g, " 3/4 ")
+    .replace(/&frac13;|⅓/g, " 1/3 ")
+    .replace(/&frac23;|⅔/g, " 2/3 ")
+    .replace(/&frac18;|⅛/g, " 1/8 ")
+    .replace(/<[^>]*>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const pattern = /^((?:\d+\s+)?\d+\/\d+|\d+(?:\.\d+)?|\d+\s*-\s*\d+)\s*(?:([a-zA-Z\.\s]+?)(?:\s+of\b|\s+))?(.*)$/;
+  const match = name.match(pattern);
+
+  if (match) {
+    const rawQtyStr = match[1];
+    const candidateUnit = (match[2] || "").trim().toLowerCase();
+    const candidateName = (match[3] || "").trim();
+
+    if (standardUnitMap[candidateUnit]) {
+      const parsedQty = parseQuantityString(rawQtyStr);
+      if (parsedQty !== null) {
+        qty = parsedQty;
+        unit = standardUnitMap[candidateUnit];
+        name = candidateName;
+      }
+    } else if (!unit || unit === "item" || unit === "whole" || unit === "piece") {
+      const parsedQty = parseQuantityString(rawQtyStr);
+      if (parsedQty !== null) {
+        qty = parsedQty;
+        const combined = (candidateUnit ? candidateUnit + " " : "") + candidateName;
+        const words = combined.split(/\s+/);
+        const firstWord = words[0]?.toLowerCase().replace(/\.$/, "");
+        const twoWords = (words[0] + " " + (words[1] || "")).toLowerCase().replace(/\.$/, "");
+
+        if (standardUnitMap[twoWords]) {
+          unit = standardUnitMap[twoWords];
+          name = words.slice(2).join(" ");
+        } else if (standardUnitMap[firstWord]) {
+          unit = standardUnitMap[firstWord];
+          name = words.slice(1).join(" ");
+        } else {
+          name = combined;
+          if (!unit || unit === "item") unit = "";
+        }
+      }
+    }
+  }
+
+  if (typeof qty === "string") {
+    qty = parseQuantityString(qty);
+  }
+  if (typeof qty !== "number" || isNaN(qty) || qty <= 0) {
+    qty = 1;
+  }
+
+  if (unit && standardUnitMap[unit]) {
+    unit = standardUnitMap[unit];
+  } else if (unit === "item") {
+    unit = "";
+  }
+
+  name = name.replace(/^of\s+/i, "").trim();
+
+  return {
+    name: name || "Ingredient",
+    quantity: Math.round(qty * 100) / 100,
+    unit: unit || "",
+    substitutions
+  };
+}
+
+
 // Initialize SQLite database
 let db;
 async function initDb() {
@@ -147,6 +301,22 @@ async function initDb() {
     console.log("🌱 Seeded initial starter recipes into SQLite database");
   }
 
+
+  // Auto-repair & normalize all stored ingredients and entities
+  try {
+    const allRows = await db.all("SELECT * FROM recipes");
+    for (const r of allRows) {
+      if (r.ingredients) {
+        try {
+          const parsedIngs = JSON.parse(r.ingredients);
+          const sanitized = parsedIngs.map(sanitizeAndExtractIngredient);
+          await db.run("UPDATE recipes SET ingredients = ? WHERE id = ?", [JSON.stringify(sanitized), r.id]);
+        } catch (e) {}
+      }
+    }
+    console.log("🧹 Verified and sanitized stored recipes in SQLite database");
+  } catch (e) {}
+
   console.log("📦 SQLite database initialized (recipes.db)");
 }
 await initDb();
@@ -162,6 +332,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
  * 3. Language & Typography: Strips HTML tags, unescapes entities, removes blog boilerplate, ensures clean instructions.
  * 4. Categorization Tags: Standardizes tag casing and ensures protein/cuisine/diet tags exist.
  */
+
 function selfCheckAndVerifyRecipe(recipe, rawContext = "") {
   if (!recipe || typeof recipe !== "object") return recipe;
   
@@ -214,99 +385,8 @@ function selfCheckAndVerifyRecipe(recipe, rawContext = "") {
   recipe.cookTimeMinutes = Math.max(0, Math.min(cook, 2880));
 
   // 2. MEASUREMENTS & UNITS SELF-CHECK & SANITIZATION
-  const standardUnitMap = {
-    "g": "g", "gram": "g", "grams": "g", "g.": "g", "gr": "g",
-    "kg": "kg", "kilogram": "kg", "kilograms": "kg", "kg.": "kg",
-    "ml": "ml", "milliliter": "ml", "milliliters": "ml", "ml.": "ml",
-    "l": "l", "liter": "l", "litres": "l", "liters": "l", "l.": "l",
-    "tsp": "tsp", "teaspoon": "tsp", "teaspoons": "tsp", "tsp.": "tsp", "t.": "tsp",
-    "tbsp": "tbsp", "tablespoon": "tbsp", "tablespoons": "tbsp", "tbsp.": "tbsp", "tbs": "tbsp", "tbs.": "tbsp", "t.": "tbsp",
-    "cup": "cup", "cups": "cup", "c.": "cup", "c": "cup",
-    "oz": "oz", "ounce": "oz", "ounces": "oz", "oz.": "oz",
-    "fl oz": "fl oz", "fluid ounce": "fl oz", "fluid ounces": "fl oz", "fl. oz.": "fl oz",
-    "lb": "lb", "pound": "lb", "pounds": "lb", "lbs": "lb", "lbs.": "lb",
-    "clove": "clove", "cloves": "cloves",
-    "piece": "piece", "pieces": "pieces", "pcs": "pieces", "pc": "piece",
-    "slice": "slice", "slices": "slices",
-    "pinch": "pinch", "pinches": "pinch", "dash": "dash",
-    "can": "can", "cans": "cans",
-    "stalk": "stalk", "stalks": "stalks",
-    "bunch": "bunch", "bunches": "bunch",
-    "sprig": "sprig", "sprigs": "sprigs"
-  };
-
-  const fractionMap = {
-    "½": 0.5, "1/2": 0.5,
-    "¼": 0.25, "1/4": 0.25,
-    "¾": 0.75, "3/4": 0.75,
-    "⅓": 0.333, "1/3": 0.333,
-    "⅔": 0.667, "2/3": 0.667,
-    "⅛": 0.125, "1/8": 0.125,
-    "⅜": 0.375, "3/8": 0.375,
-    "⅝": 0.625, "5/8": 0.625,
-    "⅞": 0.875, "7/8": 0.875
-  };
-
   if (Array.isArray(recipe.ingredients)) {
-    recipe.ingredients = recipe.ingredients.map(ing => {
-      if (!ing || typeof ing !== "object") return { name: String(ing || ""), quantity: 1, unit: "" };
-      
-      let name = (ing.name || "").trim();
-      let qty = ing.quantity;
-      let unit = (ing.unit || "").trim().toLowerCase();
-
-      name = name.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/<[^>]*>/g, "");
-
-      if (typeof qty === "string") {
-        let qStr = qty.trim();
-        for (const [frac, num] of Object.entries(fractionMap)) {
-          if (qStr.includes(frac)) {
-            qStr = qStr.replace(frac, "").trim();
-            const base = qStr ? parseFloat(qStr) : 0;
-            qty = (isNaN(base) ? 0 : base) + num;
-            report.fixesApplied.push(`Normalized fraction ${frac} to ${qty}`);
-            break;
-          }
-        }
-        if (typeof qty === "string") {
-          qty = parseFloat(qStr);
-        }
-      }
-
-      if (typeof qty !== "number" || isNaN(qty) || qty <= 0) {
-        const leadingNumMatch = name.match(/^(\d+(?:\.\d+)?|\d+\/\d+)\s*([a-zA-Z]+)?\s+(.*)$/);
-        if (leadingNumMatch) {
-          const parsedVal = leadingNumMatch[1].includes("/") 
-            ? (parseFloat(leadingNumMatch[1].split('/')[0]) / parseFloat(leadingNumMatch[1].split('/')[1]))
-            : parseFloat(leadingNumMatch[1]);
-          if (!isNaN(parsedVal)) {
-            qty = parsedVal;
-            if (leadingNumMatch[2] && standardUnitMap[leadingNumMatch[2].toLowerCase()]) {
-              unit = standardUnitMap[leadingNumMatch[2].toLowerCase()];
-            }
-            name = leadingNumMatch[3];
-            report.fixesApplied.push(`Extracted quantity ${qty} ${unit} from ingredient string`);
-          } else {
-            qty = 1;
-          }
-        } else {
-          qty = 1;
-        }
-      }
-
-      if (unit && standardUnitMap[unit]) {
-        unit = standardUnitMap[unit];
-      }
-
-      let subs = Array.isArray(ing.substitutions) ? ing.substitutions.filter(s => typeof s === "string" && s.trim()) : [];
-
-      return {
-        name,
-        quantity: Math.round(qty * 100) / 100,
-        unit: unit || "",
-        substitutions: subs
-      };
-    });
+    recipe.ingredients = recipe.ingredients.map(ing => sanitizeAndExtractIngredient(ing));
   }
 
   // 3. LANGUAGE & TYPOGRAPHY SELF-CHECK
