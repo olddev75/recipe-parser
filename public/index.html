@@ -4817,6 +4817,7 @@
         if (data.error) throw new Error(data.error);
 
         loadRecipeIntoView(data);
+        await saveCurrentRecipe();
       } catch (err) {
         showBackgroundNotification("error", "Error parsing recipe: " + err.message);
       } finally {
@@ -4862,6 +4863,7 @@
         if (data.error) throw new Error(data.error);
 
         loadRecipeIntoView(data);
+        await saveCurrentRecipe();
       } catch (err) {
         showBackgroundNotification("error", "Error analyzing image: " + err.message);
       } finally {
