@@ -145,6 +145,10 @@
                 <span>➕</span>
                 <span>Add Next</span>
               </button>
+              <button onclick="deleteActiveRecipe()" class="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 rounded-lg text-xs font-semibold transition flex items-center gap-1" title="Delete this recipe">
+                <span>🗑️</span>
+                <span>Delete</span>
+              </button>
               <button onclick="closeActiveRecipe()" class="p-1.5 bg-slate-800 hover:bg-rose-600/30 text-slate-400 hover:text-rose-300 rounded-lg text-xs transition" title="Close recipe view">
                 ✕
               </button>
@@ -221,13 +225,40 @@
             </button>
           </div>
 
-          <!-- Metadata & Tags -->
-          <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-400 mb-4 font-medium">
-            <span id="prepMeta">Prep: 10m</span>
-            <span>•</span>
-            <span id="cookMeta">Cook: 20m</span>
-            <span>•</span>
-            <span id="yieldMeta">Yield: 4 servings</span>
+          <!-- Metadata Bar with Difficulty & Rating -->
+          <div class="flex flex-wrap items-center justify-between gap-y-3 gap-x-4 mb-4 pb-3 border-b border-slate-800/80 text-xs">
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-400 font-medium">
+              <span id="prepMeta">Prep: 10m</span>
+              <span>•</span>
+              <span id="cookMeta">Cook: 20m</span>
+              <span>•</span>
+              <span id="yieldMeta">Yield: 4 servings</span>
+            </div>
+
+            <!-- Interactive Difficulty & Rating Controls -->
+            <div class="flex items-center gap-3 flex-wrap no-print">
+              <!-- Difficulty Button -->
+              <div class="flex items-center gap-1.5">
+                <span class="text-slate-400 font-medium">Difficulty:</span>
+                <button id="difficultyBtn" onclick="cycleDifficulty()" class="px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm border bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:scale-105" title="Click to change difficulty">
+                  <span id="difficultyIcon">🟢</span>
+                  <span id="difficultyLabel">Easy</span>
+                </button>
+              </div>
+
+              <!-- 5-Star Rating Buttons -->
+              <div class="flex items-center gap-1.5">
+                <span class="text-slate-400 font-medium">Rating:</span>
+                <div id="starRatingContainer" class="flex items-center bg-slate-900 px-2 py-0.5 rounded-lg border border-slate-700/80 gap-0.5 cursor-pointer">
+                  <button type="button" onclick="setRecipeRating(1)" class="star-btn text-base transition hover:scale-125 focus:outline-none text-slate-600 hover:text-amber-400" title="1 Star">☆</button>
+                  <button type="button" onclick="setRecipeRating(2)" class="star-btn text-base transition hover:scale-125 focus:outline-none text-slate-600 hover:text-amber-400" title="2 Stars">☆</button>
+                  <button type="button" onclick="setRecipeRating(3)" class="star-btn text-base transition hover:scale-125 focus:outline-none text-slate-600 hover:text-amber-400" title="3 Stars">☆</button>
+                  <button type="button" onclick="setRecipeRating(4)" class="star-btn text-base transition hover:scale-125 focus:outline-none text-slate-600 hover:text-amber-400" title="4 Stars">☆</button>
+                  <button type="button" onclick="setRecipeRating(5)" class="star-btn text-base transition hover:scale-125 focus:outline-none text-slate-600 hover:text-amber-400" title="5 Stars">☆</button>
+                  <span id="ratingScoreText" class="text-[11px] font-bold text-amber-400 ml-1">0/5</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Tags Container -->
@@ -561,6 +592,135 @@
       document.getElementById("emptyState").classList.remove("hidden");
     }
 
+    async function deleteActiveRecipe() {
+      if (!activeRecipe) return;
+
+      if (!activeRecipe.id) {
+        if (confirm("Discard unsaved recipe?")) {
+          closeActiveRecipe();
+        }
+        return;
+      }
+
+      const title = activeRecipe.title || "this recipe";
+      if (!confirm(`Are you sure you want to delete "${title}"? This cannot be undone.`)) {
+        return;
+      }
+
+      const id = activeRecipe.id;
+      try {
+        await fetch(`/api/recipes/${id}`, { method: "DELETE" });
+      } catch (e) {
+        console.warn("Delete recipe server error:", e);
+      }
+
+      let recipes = getStoredRecipes().filter(r => r.id !== id);
+      localStorage.setItem("recipe_deck_items", JSON.stringify(recipes));
+      cachedSavedRecipes = recipes;
+
+      closeActiveRecipe();
+      await updateSavedUI();
+      alert("🗑️ Recipe deleted successfully.");
+    }
+
+    /* ==========================================================================
+       RATING & DIFFICULTY CONTROLS
+       ========================================================================== */
+    async function setRecipeRating(score) {
+      if (!activeRecipe) return;
+      const newRating = (activeRecipe.rating === score) ? 0 : score;
+      activeRecipe.rating = newRating;
+      if (originalRecipe) originalRecipe.rating = newRating;
+
+      renderRatingAndDifficultyUI();
+
+      if (activeRecipe.id) {
+        try {
+          await fetch(`/api/recipes/${activeRecipe.id}/rating`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ rating: newRating })
+          });
+          await updateSavedUI();
+        } catch (err) {
+          console.warn("Rating update error:", err);
+        }
+      }
+    }
+
+    async function cycleDifficulty() {
+      if (!activeRecipe) return;
+      const levels = ["Easy", "Medium", "Hard"];
+      const current = activeRecipe.difficulty || "Easy";
+      const nextIdx = (levels.indexOf(current) + 1) % levels.length;
+      const nextDifficulty = levels[nextIdx];
+
+      activeRecipe.difficulty = nextDifficulty;
+      if (originalRecipe) originalRecipe.difficulty = nextDifficulty;
+
+      renderRatingAndDifficultyUI();
+
+      if (activeRecipe.id) {
+        try {
+          await fetch(`/api/recipes/${activeRecipe.id}/difficulty`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ difficulty: nextDifficulty })
+          });
+          await updateSavedUI();
+        } catch (err) {
+          console.warn("Difficulty update error:", err);
+        }
+      }
+    }
+
+    function renderRatingAndDifficultyUI() {
+      if (!activeRecipe) return;
+
+      // Render Difficulty
+      const diff = activeRecipe.difficulty || "Easy";
+      const diffBtn = document.getElementById("difficultyBtn");
+      const diffIcon = document.getElementById("difficultyIcon");
+      const diffLabel = document.getElementById("difficultyLabel");
+
+      if (diffBtn && diffLabel && diffIcon) {
+        diffLabel.innerText = diff;
+        if (diff === "Easy") {
+          diffIcon.innerText = "🟢";
+          diffBtn.className = "px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm border bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:scale-105";
+        } else if (diff === "Medium") {
+          diffIcon.innerText = "🟡";
+          diffBtn.className = "px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm border bg-amber-500/10 border-amber-500/30 text-amber-300 hover:scale-105";
+        } else {
+          diffIcon.innerText = "🔴";
+          diffBtn.className = "px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm border bg-rose-500/10 border-rose-500/30 text-rose-300 hover:scale-105";
+        }
+      }
+
+      // Render Star Rating
+      const rating = typeof activeRecipe.rating === "number" ? activeRecipe.rating : 0;
+      const container = document.getElementById("starRatingContainer");
+      const scoreText = document.getElementById("ratingScoreText");
+
+      if (scoreText) {
+        scoreText.innerText = rating > 0 ? `${rating}/5` : "0/5";
+      }
+
+      if (container && typeof container.querySelectorAll === 'function') {
+        const buttons = container.querySelectorAll(".star-btn");
+        buttons.forEach((btn, idx) => {
+          const starNum = idx + 1;
+          if (starNum <= rating) {
+            btn.innerText = "★";
+            btn.className = "star-btn text-base transition hover:scale-125 focus:outline-none text-amber-400";
+          } else {
+            btn.innerText = "☆";
+            btn.className = "star-btn text-base transition hover:scale-125 focus:outline-none text-slate-600 hover:text-amber-400";
+          }
+        });
+      }
+    }
+
     /* ==========================================================================
        CLIENT-SIDE IMAGE COMPRESSION & RESIZING (Canvas Max 1200px)
        ========================================================================== */
@@ -743,6 +903,10 @@
     function loadRecipeIntoView(recipe) {
       originalRecipe = JSON.parse(JSON.stringify(recipe));
       activeRecipe = JSON.parse(JSON.stringify(recipe));
+      activeRecipe.rating = typeof recipe.rating === 'number' ? recipe.rating : 0;
+      activeRecipe.difficulty = recipe.difficulty || 'Easy';
+      originalRecipe.rating = activeRecipe.rating;
+      originalRecipe.difficulty = activeRecipe.difficulty;
       translationCache = {};
       currentTranslationLang = null;
       isViewingOriginal = true;
@@ -946,6 +1110,8 @@
       document.getElementById("cookMeta").innerText = `Cook: ${activeRecipe.cookTimeMinutes || 0}m`;
       document.getElementById("yieldMeta").innerText = `Yield: ${currentServingsCount} servings`;
       document.getElementById("currentServings").innerText = currentServingsCount;
+
+      renderRatingAndDifficultyUI();
 
       const saveLabel = document.getElementById("saveBtnLabel");
       if (saveLabel) {
@@ -1633,6 +1799,8 @@
       if (!activeRecipe) return;
       // When saving, persist base record with original title/ingredients
       const recipeToSave = originalRecipe || activeRecipe;
+      recipeToSave.rating = typeof activeRecipe.rating === "number" ? activeRecipe.rating : 0;
+      recipeToSave.difficulty = activeRecipe.difficulty || "Easy";
       if (activeRecipe.imageAttachment) {
         recipeToSave.imageAttachment = activeRecipe.imageAttachment;
       }
@@ -1802,15 +1970,33 @@
           return `<span class="px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-300/90 text-[10px]">${clean}</span>`;
         }).join(" ");
 
+        const ratingBadge = (typeof r.rating === 'number' && r.rating > 0)
+          ? `<span class="text-amber-400 font-bold text-[10px] flex items-center gap-0.5"><span>★</span>${r.rating}</span>`
+          : '';
+
+        let diffBadge = '';
+        const diff = r.difficulty || 'Easy';
+        if (diff === 'Easy') {
+          diffBadge = `<span class="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 text-[10px]">🟢 Easy</span>`;
+        } else if (diff === 'Medium') {
+          diffBadge = `<span class="px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-300 text-[10px]">🟡 Med</span>`;
+        } else if (diff === 'Hard') {
+          diffBadge = `<span class="px-1.5 py-0.2 rounded bg-rose-500/10 text-rose-400 text-[10px]">🔴 Hard</span>`;
+        }
+
         return `
           <div onclick="loadSavedRecipe(${r.id})" class="flex items-center gap-3 p-2 bg-slate-900/80 hover:bg-slate-700/60 rounded-xl cursor-pointer border border-slate-800 transition group">
             ${thumb}
             <div class="flex-1 min-w-0">
-              <div class="font-medium text-slate-200 truncate text-sm">${r.title}</div>
-              <div class="text-[11px] text-slate-400 flex items-center gap-2 flex-wrap">
+              <div class="font-medium text-slate-200 truncate text-sm flex items-center justify-between gap-1">
+                <span class="truncate">${r.title}</span>
+                ${ratingBadge}
+              </div>
+              <div class="text-[11px] text-slate-400 flex items-center gap-1.5 flex-wrap mt-0.5">
                 <span>${r.servings || 4} serv</span>
                 <span>•</span>
                 <span>${(r.prepTimeMinutes || 0) + (r.cookTimeMinutes || 0)}m</span>
+                ${diffBadge}
                 ${tagBadges}
               </div>
             </div>

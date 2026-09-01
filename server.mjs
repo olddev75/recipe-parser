@@ -37,18 +37,24 @@ async function initDb() {
       ingredients TEXT,
       instructions TEXT,
       tags TEXT,
+      rating INTEGER DEFAULT 0,
+      difficulty TEXT DEFAULT 'Easy',
       imageAttachment TEXT,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
 
-  // Migration: add tags column if existing table doesn't have it
+  // Migration: add columns if existing table doesn't have them
   try {
     await db.exec("ALTER TABLE recipes ADD COLUMN tags TEXT;");
-  } catch (e) {
-    // Column already exists or table created with it
-  }
+  } catch (e) {}
+  try {
+    await db.exec("ALTER TABLE recipes ADD COLUMN rating INTEGER DEFAULT 0;");
+  } catch (e) {}
+  try {
+    await db.exec("ALTER TABLE recipes ADD COLUMN difficulty TEXT DEFAULT 'Easy';");
+  } catch (e) {}
 
   // Seed default starter recipes if database is fresh/empty
   const countRow = await db.get("SELECT COUNT(*) as count FROM recipes");
@@ -60,6 +66,8 @@ async function initDb() {
         prepTimeMinutes: 15,
         cookTimeMinutes: 15,
         tags: ["Chicken", "High-Protein", "Thai", "30-Minute"],
+        rating: 5,
+        difficulty: "Medium",
         ingredients: [
           { name: "chicken breast (thinly sliced)", quantity: 250, unit: "g" },
           { name: "flat rice noodles", quantity: 200, unit: "g" },
@@ -88,6 +96,8 @@ async function initDb() {
         prepTimeMinutes: 10,
         cookTimeMinutes: 20,
         tags: ["Chicken", "Keto", "Italian", "30-Minute", "Low-Carb"],
+        rating: 5,
+        difficulty: "Easy",
         ingredients: [
           { name: "boneless chicken breasts", quantity: 600, unit: "g" },
           { name: "heavy whipping cream", quantity: 240, unit: "ml" },
@@ -113,8 +123,8 @@ async function initDb() {
 
     for (const r of starterRecipes) {
       await db.run(
-        `INSERT INTO recipes (title, servings, prepTimeMinutes, cookTimeMinutes, ingredients, instructions, tags, imageAttachment)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO recipes (title, servings, prepTimeMinutes, cookTimeMinutes, ingredients, instructions, tags, rating, difficulty, imageAttachment)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           r.title,
           r.servings,
@@ -123,6 +133,8 @@ async function initDb() {
           JSON.stringify(r.ingredients),
           JSON.stringify(r.instructions),
           JSON.stringify(r.tags),
+          r.rating || 0,
+          r.difficulty || "Easy",
           null
         ]
       );
@@ -143,6 +155,15 @@ const recipeSchema = {
     servings: { type: Type.NUMBER },
     prepTimeMinutes: { type: Type.NUMBER },
     cookTimeMinutes: { type: Type.NUMBER },
+    rating: {
+      type: Type.NUMBER,
+      description: "Recipe rating score from 1 to 5 stars if specified or implied, otherwise 0."
+    },
+    difficulty: {
+      type: Type.STRING,
+      enum: ["Easy", "Medium", "Hard"],
+      description: "Recipe difficulty level: Easy, Medium, or Hard."
+    },
     tags: {
       type: Type.ARRAY,
       items: { type: Type.STRING },
@@ -323,13 +344,13 @@ app.get("/api/recipes/:id", async (req, res) => {
 
 // Create a new recipe in SQLite
 app.post("/api/recipes", async (req, res) => {
-  const { title, servings, prepTimeMinutes, cookTimeMinutes, ingredients, instructions, tags, imageAttachment } = req.body;
+  const { title, servings, prepTimeMinutes, cookTimeMinutes, ingredients, instructions, tags, rating, difficulty, imageAttachment } = req.body;
   if (!title) return res.status(400).json({ error: "Title is required" });
 
   try {
     const result = await db.run(
-      `INSERT INTO recipes (title, servings, prepTimeMinutes, cookTimeMinutes, ingredients, instructions, tags, imageAttachment, createdAt, updatedAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+      `INSERT INTO recipes (title, servings, prepTimeMinutes, cookTimeMinutes, ingredients, instructions, tags, rating, difficulty, imageAttachment, createdAt, updatedAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
       [
         title,
         servings || 4,
@@ -338,6 +359,8 @@ app.post("/api/recipes", async (req, res) => {
         JSON.stringify(ingredients || []),
         JSON.stringify(instructions || []),
         JSON.stringify(tags || []),
+        typeof rating === "number" ? rating : 0,
+        difficulty || "Easy",
         imageAttachment || null
       ]
     );
@@ -357,7 +380,7 @@ app.post("/api/recipes", async (req, res) => {
 
 // Update full recipe by ID
 app.put("/api/recipes/:id", async (req, res) => {
-  const { title, servings, prepTimeMinutes, cookTimeMinutes, ingredients, instructions, tags, imageAttachment } = req.body;
+  const { title, servings, prepTimeMinutes, cookTimeMinutes, ingredients, instructions, tags, rating, difficulty, imageAttachment } = req.body;
   try {
     const existing = await db.get("SELECT * FROM recipes WHERE id = ?", req.params.id);
     if (!existing) return res.status(404).json({ error: "Recipe not found" });
@@ -371,6 +394,8 @@ app.put("/api/recipes/:id", async (req, res) => {
          ingredients = COALESCE(?, ingredients),
          instructions = COALESCE(?, instructions),
          tags = COALESCE(?, tags),
+         rating = COALESCE(?, rating),
+         difficulty = COALESCE(?, difficulty),
          imageAttachment = ?,
          updatedAt = CURRENT_TIMESTAMP
        WHERE id = ?`,
@@ -382,6 +407,8 @@ app.put("/api/recipes/:id", async (req, res) => {
         ingredients ? JSON.stringify(ingredients) : existing.ingredients,
         instructions ? JSON.stringify(instructions) : existing.instructions,
         tags !== undefined ? JSON.stringify(tags) : existing.tags,
+        rating !== undefined ? rating : existing.rating,
+        difficulty !== undefined ? difficulty : existing.difficulty,
         imageAttachment !== undefined ? imageAttachment : existing.imageAttachment,
         req.params.id
       ]
@@ -397,6 +424,56 @@ app.put("/api/recipes/:id", async (req, res) => {
   } catch (err) {
     console.error("Update recipe error:", err);
     res.status(500).json({ error: "Failed to update recipe" });
+  }
+});
+
+// Dedicated endpoint to update rating
+app.patch("/api/recipes/:id/rating", async (req, res) => {
+  const { rating } = req.body;
+  try {
+    const existing = await db.get("SELECT * FROM recipes WHERE id = ?", req.params.id);
+    if (!existing) return res.status(404).json({ error: "Recipe not found" });
+
+    await db.run(
+      `UPDATE recipes SET rating = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`,
+      [typeof rating === "number" ? rating : 0, req.params.id]
+    );
+
+    const updated = await db.get("SELECT * FROM recipes WHERE id = ?", req.params.id);
+    res.json({
+      ...updated,
+      ingredients: updated.ingredients ? JSON.parse(updated.ingredients) : [],
+      instructions: updated.instructions ? JSON.parse(updated.instructions) : [],
+      tags: updated.tags ? JSON.parse(updated.tags) : []
+    });
+  } catch (err) {
+    console.error("Update rating error:", err);
+    res.status(500).json({ error: "Failed to update rating" });
+  }
+});
+
+// Dedicated endpoint to update difficulty
+app.patch("/api/recipes/:id/difficulty", async (req, res) => {
+  const { difficulty } = req.body;
+  try {
+    const existing = await db.get("SELECT * FROM recipes WHERE id = ?", req.params.id);
+    if (!existing) return res.status(404).json({ error: "Recipe not found" });
+
+    await db.run(
+      `UPDATE recipes SET difficulty = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`,
+      [difficulty || "Easy", req.params.id]
+    );
+
+    const updated = await db.get("SELECT * FROM recipes WHERE id = ?", req.params.id);
+    res.json({
+      ...updated,
+      ingredients: updated.ingredients ? JSON.parse(updated.ingredients) : [],
+      instructions: updated.instructions ? JSON.parse(updated.instructions) : [],
+      tags: updated.tags ? JSON.parse(updated.tags) : []
+    });
+  } catch (err) {
+    console.error("Update difficulty error:", err);
+    res.status(500).json({ error: "Failed to update difficulty" });
   }
 });
 
