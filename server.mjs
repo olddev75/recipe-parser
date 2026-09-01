@@ -253,6 +253,304 @@ app.post("/api/parse-image", async (req, res) => {
   }
 });
 
+// Helper to parse ISO 8601 duration (e.g. PT15M, PT1H30M, P0Y0M0DT0H20M0S) to minutes
+function parseIsoDuration(durationStr) {
+  if (!durationStr || typeof durationStr !== "string") return 0;
+  const match = durationStr.match(/P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/i);
+  if (!match) return 0;
+  const days = parseInt(match[1] || 0, 10);
+  const hours = parseInt(match[2] || 0, 10);
+  const minutes = parseInt(match[3] || 0, 10);
+  return days * 1440 + hours * 60 + minutes;
+}
+
+// Helper to extract JSON-LD recipe objects from HTML
+function extractJsonLdRecipe(html) {
+  const jsonLdRegex = /<script\s+[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let match;
+  while ((match = jsonLdRegex.exec(html)) !== null) {
+    try {
+      const rawJson = match[1].trim();
+      if (!rawJson) continue;
+      const data = JSON.parse(rawJson);
+
+      const findRecipe = (obj) => {
+        if (!obj || typeof obj !== "object") return null;
+        if (Array.isArray(obj)) {
+          for (const item of obj) {
+            const found = findRecipe(item);
+            if (found) return found;
+          }
+          return null;
+        }
+        if (obj["@graph"] && Array.isArray(obj["@graph"])) {
+          for (const item of obj["@graph"]) {
+            const found = findRecipe(item);
+            if (found) return found;
+          }
+        }
+        const type = obj["@type"];
+        if (type === "Recipe" || (Array.isArray(type) && type.includes("Recipe"))) {
+          return obj;
+        }
+        return null;
+      };
+
+      const recipeObj = findRecipe(data);
+      if (recipeObj) return recipeObj;
+    } catch (e) {
+      // Continue searching next script tag
+    }
+  }
+  return null;
+}
+
+// Helper to directly parse JSON-LD into standard recipe schema
+function parseDirectJsonLd(jsonLd) {
+  const title = jsonLd.name || jsonLd.headline || "Imported Web Recipe";
+  
+  let servings = 4;
+  if (jsonLd.recipeYield) {
+    if (typeof jsonLd.recipeYield === "number") {
+      servings = jsonLd.recipeYield;
+    } else if (typeof jsonLd.recipeYield === "string") {
+      const numMatch = jsonLd.recipeYield.match(/\d+/);
+      if (numMatch) servings = parseInt(numMatch[0], 10);
+    } else if (Array.isArray(jsonLd.recipeYield) && jsonLd.recipeYield.length > 0) {
+      const numMatch = String(jsonLd.recipeYield[0]).match(/\d+/);
+      if (numMatch) servings = parseInt(numMatch[0], 10);
+    }
+  }
+
+  const prepTimeMinutes = parseIsoDuration(jsonLd.prepTime);
+  const cookTimeMinutes = parseIsoDuration(jsonLd.cookTime);
+
+  // Parse ingredients
+  const rawIngs = jsonLd.recipeIngredient || jsonLd.ingredients || [];
+  const ingredients = [];
+  if (Array.isArray(rawIngs)) {
+    for (const item of rawIngs) {
+      if (typeof item === "string") {
+        const ingMatch = item.match(/^([\d\s\/\.\,\-]+)?\s*([a-zA-Z]+)?\s+(.*)$/);
+        if (ingMatch && ingMatch[1]) {
+          let qStr = ingMatch[1].trim();
+          let qty = parseFloat(qStr) || 1;
+          let unit = (ingMatch[2] || "").trim();
+          let name = (ingMatch[3] || item).trim();
+          ingredients.push({ name, quantity: qty, unit: unit || "item", substitutions: [] });
+        } else {
+          ingredients.push({ name: item, quantity: 1, unit: "item", substitutions: [] });
+        }
+      } else if (typeof item === "object" && item.name) {
+        ingredients.push({
+          name: item.name,
+          quantity: typeof item.quantity === "number" ? item.quantity : 1,
+          unit: item.unit || "item",
+          substitutions: []
+        });
+      }
+    }
+  }
+
+  // Parse instructions
+  const instructions = [];
+  const rawInst = jsonLd.recipeInstructions;
+  if (typeof rawInst === "string") {
+    instructions.push(rawInst);
+  } else if (Array.isArray(rawInst)) {
+    for (const step of rawInst) {
+      if (typeof step === "string") {
+        instructions.push(step.trim());
+      } else if (typeof step === "object") {
+        if (step["@type"] === "HowToSection" && Array.isArray(step.itemListElement)) {
+          for (const sub of step.itemListElement) {
+            if (typeof sub === "string") instructions.push(sub.trim());
+            else if (sub && sub.text) instructions.push(sub.text.trim());
+          }
+        } else if (step.text) {
+          instructions.push(step.text.trim());
+        } else if (step.name) {
+          instructions.push(step.name.trim());
+        }
+      }
+    }
+  }
+
+  // Parse tags
+  const tags = [];
+  if (jsonLd.recipeCuisine) {
+    if (Array.isArray(jsonLd.recipeCuisine)) tags.push(...jsonLd.recipeCuisine);
+    else tags.push(jsonLd.recipeCuisine);
+  }
+  if (jsonLd.recipeCategory) {
+    if (Array.isArray(jsonLd.recipeCategory)) tags.push(...jsonLd.recipeCategory);
+    else tags.push(jsonLd.recipeCategory);
+  }
+  if (jsonLd.keywords) {
+    if (typeof jsonLd.keywords === "string") {
+      tags.push(...jsonLd.keywords.split(",").map(k => k.trim()));
+    } else if (Array.isArray(jsonLd.keywords)) {
+      tags.push(...jsonLd.keywords);
+    }
+  }
+
+  let imageUrl = null;
+  if (jsonLd.image) {
+    if (typeof jsonLd.image === "string") imageUrl = jsonLd.image;
+    else if (Array.isArray(jsonLd.image) && jsonLd.image.length > 0) {
+      imageUrl = typeof jsonLd.image[0] === "string" ? jsonLd.image[0] : jsonLd.image[0]?.url;
+    } else if (typeof jsonLd.image === "object" && jsonLd.image.url) {
+      imageUrl = jsonLd.image.url;
+    }
+  }
+
+  return {
+    title,
+    servings,
+    prepTimeMinutes,
+    cookTimeMinutes,
+    rating: 0,
+    difficulty: "Easy",
+    ingredients: ingredients.length > 0 ? ingredients : [{ name: "Ingredients listed in instructions", quantity: 1, unit: "recipe" }],
+    instructions: instructions.length > 0 ? instructions : ["Follow directions from original recipe."],
+    tags: Array.from(new Set(tags.filter(Boolean))),
+    imageAttachment: imageUrl
+  };
+}
+
+// Helper to clean HTML text for fallback Gemini extraction
+function cleanHtmlText(html) {
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, " ")
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, " ")
+    .replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, " ")
+    .replace(/<svg\b[^<]*(?:(?!<\/svg>)<[^<]*)*<\/svg>/gi, " ")
+    .replace(/<header\b[^<]*(?:(?!<\/header>)<[^<]*)*<\/header>/gi, " ")
+    .replace(/<footer\b[^<]*(?:(?!<\/footer>)<[^<]*)*<\/footer>/gi, " ")
+    .replace(/<nav\b[^<]*(?:(?!<\/nav>)<[^<]*)*<\/nav>/gi, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 40000); // Send first 40k chars of clean text
+}
+
+// Web URL Scraper & Recipe Extractor Endpoint
+app.post("/api/scrape", async (req, res) => {
+  const { url } = req.body;
+  if (!url || typeof url !== "string") {
+    return res.status(400).json({ error: "Please provide a valid web URL" });
+  }
+
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(url.trim());
+    if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+      throw new Error("Invalid URL protocol");
+    }
+  } catch (err) {
+    return res.status(400).json({ error: "Invalid URL format. Please include http:// or https://" });
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+    const response = await fetch(parsedUrl.href, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9"
+      }
+    });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch page: HTTP ${response.status} ${response.statusText}`);
+    }
+
+    const html = await response.text();
+    const jsonLdRecipe = extractJsonLdRecipe(html);
+
+    let parsedRecipe = null;
+    let imageUrl = null;
+
+    if (jsonLdRecipe) {
+      console.log(`[Scraper] Found schema.org/Recipe JSON-LD for ${parsedUrl.hostname}`);
+      
+      // Extract image URL if available
+      if (jsonLdRecipe.image) {
+        if (typeof jsonLdRecipe.image === "string") {
+          imageUrl = jsonLdRecipe.image;
+        } else if (Array.isArray(jsonLdRecipe.image) && jsonLdRecipe.image.length > 0) {
+          imageUrl = typeof jsonLdRecipe.image[0] === "string" ? jsonLdRecipe.image[0] : jsonLdRecipe.image[0]?.url;
+        } else if (typeof jsonLdRecipe.image === "object" && jsonLdRecipe.image.url) {
+          imageUrl = jsonLdRecipe.image.url;
+        }
+      }
+
+      // Try Gemini normalization first for superior categorized tags and units; fall back to direct JSON-LD parser
+      try {
+        const geminiPrompt = `Convert and normalize this schema.org/Recipe JSON-LD data into structured recipe JSON with standard measurements (metric preferred), clean categorized tags (protein, diet/nutrition, cuisine/style), and ingredient substitutions:\n\n${JSON.stringify(jsonLdRecipe, null, 2)}`;
+
+        const aiResponse = await ai.models.generateContent({
+          model: "gemini-3.6-flash",
+          contents: geminiPrompt,
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: recipeSchema,
+          }
+        });
+
+        parsedRecipe = JSON.parse(aiResponse.text);
+      } catch (geminiErr) {
+        console.warn("[Scraper] Gemini JSON-LD normalization fallback to direct parser:", geminiErr.message);
+        parsedRecipe = parseDirectJsonLd(jsonLdRecipe);
+      }
+    } else {
+      console.log(`[Scraper] No JSON-LD found. Falling back to Gemini HTML text parsing for ${parsedUrl.hostname}`);
+      const cleanText = cleanHtmlText(html);
+      
+      if (!cleanText || cleanText.length < 50) {
+        throw new Error("Could not extract readable recipe text from the webpage.");
+      }
+
+      const geminiPrompt = `Extract the complete recipe from this webpage text into structured JSON with standard measurements (metric preferred), estimated cook/prep times, ingredient substitutions, and clean normalized categorization tags (covering protein, diet/nutrition, and cuisine/meal style):\n\n${cleanText}`;
+
+      const aiResponse = await ai.models.generateContent({
+        model: "gemini-3.6-flash",
+        contents: geminiPrompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: recipeSchema,
+        }
+      });
+
+      parsedRecipe = JSON.parse(aiResponse.text);
+    }
+
+    if (!parsedRecipe.tags) parsedRecipe.tags = [];
+    if (imageUrl && !parsedRecipe.imageAttachment) {
+      parsedRecipe.imageAttachment = imageUrl;
+    }
+
+    res.json(parsedRecipe);
+  } catch (err) {
+    console.error("[Scraper Error]:", err);
+    const msg = err.name === "AbortError" 
+      ? "Website request timed out after 15 seconds."
+      : (err.message || "Failed to scrape recipe from URL.");
+    res.status(500).json({ error: msg });
+  }
+});
+
 
 
 /* ==========================================================================

@@ -47,9 +47,9 @@ A responsive, distraction-free web application that normalises chaotic recipe so
 - [x] **Interactive Checklist:** Strikethrough ingredients and steps with a tap to track prep progress.
 - [x] **Kitchen Timers:** In-line timer buttons generated next to instructions containing durations (e.g., *"simmer 15 mins"* -> clickable 15m timer).
 
-### Phase 2: Input Expansion & Direct URL Scraping
-- [ ] **Web URL Scraper:** Extract `schema.org/Recipe` JSON-LD from direct food blog links (BBC Good Food, RecipeTin Eats, Allrecipes).
-- [ ] **Clipboard Auto-Paste:** Quick paste button for fast mobile onboarding.
+### Phase 2: Input Expansion & Direct URL Scraping (Completed ✅)
+- [x] **Web URL Scraper:** Extract `schema.org/Recipe` JSON-LD from direct food blog links (BBC Good Food, RecipeTin Eats, Allrecipes) with Gemini fallback.
+- [x] **Clipboard Auto-Paste:** Quick paste button for fast mobile onboarding.
 
 ### Phase 3: Data Management & Portability
 - [ ] **Export / Backup Engine:** One-click JSON / Markdown download of entire recipe library.

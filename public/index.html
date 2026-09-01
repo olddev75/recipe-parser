@@ -81,15 +81,38 @@
         <div class="bg-slate-800/80 p-5 rounded-xl border border-slate-700 shadow-md">
           
           <div class="flex border-b border-slate-700 mb-4 text-xs font-semibold">
-            <button id="tabTextBtn" onclick="switchTab('text')" class="flex-1 pb-2 border-b-2 border-amber-500 text-amber-400 font-bold" title="Type or paste recipe text here">📝 Text / Caption</button>
-            <button id="tabImageBtn" onclick="switchTab('image')" class="flex-1 pb-2 text-slate-400 hover:text-white" title="Upload a photo or screenshot of a recipe">📸 Screenshot / Photo</button>
+            <button id="tabTextBtn" onclick="switchTab('text')" class="flex-1 pb-2 border-b-2 border-amber-500 text-amber-400 font-bold cursor-pointer" title="Type or paste recipe text here">📝 Text / Caption</button>
+            <button id="tabUrlBtn" onclick="switchTab('url')" class="flex-1 pb-2 text-slate-400 hover:text-white cursor-pointer" title="Import recipe from a website link">🔗 Web URL</button>
+            <button id="tabImageBtn" onclick="switchTab('image')" class="flex-1 pb-2 text-slate-400 hover:text-white cursor-pointer" title="Upload a photo or screenshot of a recipe">📸 Screenshot / Photo</button>
           </div>
 
           <!-- Text Mode Form -->
           <div id="textMode">
+            <div class="flex justify-between items-center mb-1.5">
+              <label for="rawInput" id="rawInputLabel" class="text-[11px] font-medium text-slate-400">Recipe Text</label>
+              <button type="button" id="pasteTextBtn" onclick="handlePasteClipboard('rawInput')" class="px-2.5 py-1 bg-slate-700/80 hover:bg-slate-600 text-slate-200 rounded-md text-[11px] font-semibold transition flex items-center gap-1 cursor-pointer" title="Paste text from your clipboard">
+                <span id="pasteTextBtnLabel">📋 Paste</span>
+              </button>
+            </div>
             <textarea id="rawInput" rows="6" placeholder="Paste recipe text, social media post, or ingredients here..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-200 resize-y mb-3" title="Paste your recipe text or ingredients list here"></textarea>
             <button id="parseTextBtn" onclick="handleParseText()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-lg transition flex justify-center items-center gap-2 cursor-pointer shadow" title="Read the text and turn it into a clean recipe">
               <span id="parseTextBtnLabel">✨ Format & Parse Text</span>
+            </button>
+          </div>
+
+          <!-- Web URL Mode Form -->
+          <div id="urlMode" class="hidden">
+            <div class="flex justify-between items-center mb-1.5">
+              <label for="urlInput" id="urlInputLabel" class="text-[11px] font-medium text-slate-400">Recipe Website Link</label>
+              <button type="button" id="pasteUrlBtn" onclick="handlePasteClipboard('urlInput')" class="px-2.5 py-1 bg-slate-700/80 hover:bg-slate-600 text-slate-200 rounded-md text-[11px] font-semibold transition flex items-center gap-1 cursor-pointer" title="Paste link from your clipboard">
+                <span id="pasteUrlBtnLabel">📋 Paste</span>
+              </button>
+            </div>
+            <div class="relative mb-3">
+              <input id="urlInput" type="url" placeholder="Paste recipe link here (e.g., https://...)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-200" title="Paste web link of the recipe here">
+            </div>
+            <button id="scrapeUrlBtn" onclick="handleScrapeUrl()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-lg transition flex justify-center items-center gap-2 cursor-pointer shadow" title="Fetch website and extract recipe">
+              <span id="scrapeUrlBtnLabel">🌐 Scrape & Import Recipe</span>
             </button>
           </div>
 
@@ -423,10 +446,11 @@
             <span>📝</span>
             <h3 id="helpSec1Title">1. How to Add a Recipe</h3>
           </div>
-          <p id="helpSec1Body" class="text-xs text-slate-300">You can add any recipe in two simple ways:</p>
+          <p id="helpSec1Body" class="text-xs text-slate-300">You can add any recipe in three simple ways:</p>
           <ul class="text-xs text-slate-300 space-y-1.5 pl-4 list-disc">
-            <li id="helpSec1Point1"><strong>Paste Text:</strong> Copy recipe text or a social media post into the box and tap <em>✨ Format & Parse Text</em>.</li>
-            <li id="helpSec1Point2"><strong>Upload a Photo:</strong> Take a picture or screenshot on your phone, drop it into the box, and tap <em>🔍 OCR & Extract Recipe</em>.</li>
+            <li id="helpSec1Point1"><strong>Paste Text:</strong> Copy recipe text or tap <em>📋 Paste</em>, then tap <em>✨ Format & Parse Text</em>.</li>
+            <li id="helpSec1Point2"><strong>Web Link:</strong> Paste any food blog or recipe URL into <em>🔗 Web URL</em> and tap <em>🌐 Scrape & Import Recipe</em>.</li>
+            <li id="helpSec1Point3"><strong>Upload a Photo:</strong> Take a picture or screenshot on your phone, drop it into the box, and tap <em>🔍 OCR & Extract Recipe</em>.</li>
           </ul>
         </div>
 
@@ -526,15 +550,16 @@
        ========================================================================== */
     const I18N = {
       en: {
-        appSubtitle: "Turn any recipe or photo into clean steps, change serving sizes, and cook step-by-step.",
+        appSubtitle: "Turn any recipe, website link, or photo into clean steps, change serving sizes, and cook step-by-step.",
         help: "Help",
         helpModalTitle: "How to Use Recipe Deck",
         helpModalSubtitle: "Easy, step-by-step guide to help you cook and save recipes",
         helpGotIt: "Got it! 👍",
         helpSec1Title: "1. How to Add a Recipe",
-        helpSec1Body: "You can add any recipe in two simple ways:",
-        helpSec1Point1: "<strong>Paste Text:</strong> Copy recipe text or a social media post into the box and tap <em>✨ Format & Parse Text</em>.",
-        helpSec1Point2: "<strong>Upload a Photo:</strong> Take a picture or screenshot on your phone, drop it into the box, and tap <em>🔍 OCR & Extract Recipe</em>.",
+        helpSec1Body: "You can add any recipe in three simple ways:",
+        helpSec1Point1: "<strong>Paste Text:</strong> Copy recipe text or tap <em>📋 Paste</em>, then tap <em>✨ Format & Parse Text</em>.",
+        helpSec1Point2: "<strong>Web Link:</strong> Paste any food blog or recipe URL into <em>🔗 Web URL</em> and tap <em>🌐 Scrape & Import Recipe</em>.",
+        helpSec1Point3: "<strong>Upload a Photo:</strong> Take a picture or screenshot on your phone, drop it into the box, and tap <em>🔍 OCR & Extract Recipe</em>.",
         helpSec2Title: "2. Change Serving Sizes & Units",
         helpSec2Point1: "<strong>Change Servings:</strong> Tap the <strong>-</strong> and <strong>+</strong> buttons. All ingredient amounts calculate automatically for your group.",
         helpSec2Point2: "<strong>Switch Units:</strong> Tap <strong>Metric</strong> for grams and milliliters, or <strong>Imperial</strong> for ounces and cups.",
@@ -552,10 +577,16 @@
         addRecipe: "Add Recipe",
         saved: "Saved",
         tabText: "📝 Text / Caption",
+        tabUrl: "🔗 Web URL",
         tabImage: "📸 Screenshot / Photo",
         rawPlaceholder: "Paste recipe text, social media post, or ingredients here...",
+        urlPlaceholder: "Paste recipe link here (e.g., https://...)",
         parseText: "✨ Format & Parse Text",
         parsingText: "⏳ Parsing with Gemini...",
+        scrapeUrl: "🌐 Scrape & Import Recipe",
+        scrapingUrl: "⏳ Scraping with Gemini...",
+        pasteClipboard: "📋 Paste",
+        enterValidUrl: "Please enter a valid recipe website link!",
         dropScreenshot: "Click or drag screenshot here",
         dropSupported: "JPEG, PNG, WebP supported",
         parseImage: "🔍 OCR & Extract Recipe",
@@ -566,7 +597,7 @@
         allTags: "All",
         noMatchingRecipes: "No matching recipes found.",
         noRecipeTitle: "No recipe currently active",
-        noRecipeSub: "Paste recipe text or upload a screenshot on the left, or select a recipe from your collection.",
+        noRecipeSub: "Paste recipe text, enter a web link, or upload a photo on the left, or select a recipe from your collection.",
         metricBtn: "Metric (g / ml)",
         imperialBtn: "Imperial (oz / cups)",
         servingsLabel: "Servings:",
@@ -619,9 +650,13 @@
         tipAddRecipe: "Clear the screen and start adding a new recipe",
         tipSavedCount: "Total recipes saved in your library",
         tipTabText: "Type or paste recipe text here",
+        tipTabUrl: "Import recipe from a website link",
         tipTabImage: "Upload a photo or screenshot of a recipe",
         tipRawInput: "Paste your recipe text or ingredients list here",
+        tipUrlInput: "Paste web link of the recipe here",
+        tipPasteClipboard: "Paste text from your clipboard",
         tipParseText: "Read the text and turn it into a clean recipe",
+        tipScrapeUrl: "Fetch website and extract recipe",
         tipDropZone: "Click or drag a recipe photo here",
         tipParseImage: "Read the photo and turn it into a clean recipe",
         tipSearch: "Type a word to search recipe names, ingredients, or tags",
@@ -656,15 +691,16 @@
         tipDeleteRecipe: "Delete this recipe from your collection"
       },
       es: {
-        appSubtitle: "Convierte cualquier receta o foto en pasos claros, cambia porciones y cocina paso a paso.",
+        appSubtitle: "Convierte cualquier receta, enlace o foto en pasos claros, cambia porciones y cocina paso a paso.",
         help: "Ayuda",
         helpModalTitle: "Cómo usar Recipe Deck",
         helpModalSubtitle: "Guía fácil y paso a paso para cocinar y guardar tus recetas",
         helpGotIt: "¡Entendido! 👍",
         helpSec1Title: "1. Cómo añadir una receta",
-        helpSec1Body: "Puedes añadir cualquier receta de dos formas sencillas:",
-        helpSec1Point1: "<strong>Pegar texto:</strong> Copia el texto o publicación en la caja y toca <em>✨ Formatear y Analizar</em>.",
-        helpSec1Point2: "<strong>Subir una foto:</strong> Toma una foto o captura con tu teléfono, arrástrala a la caja y toca <em>🔍 Extraer Receta con OCR</em>.",
+        helpSec1Body: "Puedes añadir cualquier receta de tres formas sencillas:",
+        helpSec1Point1: "<strong>Pegar texto:</strong> Copia el texto o toca <em>📋 Pegar</em> y luego <em>✨ Formatear y Analizar</em>.",
+        helpSec1Point2: "<strong>Enlace Web:</strong> Pega el enlace de la receta en <em>🔗 Enlace Web</em> y toca <em>🌐 Extraer Receta del Enlace</em>.",
+        helpSec1Point3: "<strong>Subir una foto:</strong> Toma una foto o captura con tu teléfono y toca <em>🔍 Extraer Receta con OCR</em>.",
         helpSec2Title: "2. Cambiar porciones y medidas",
         helpSec2Point1: "<strong>Cambiar porciones:</strong> Toca los botones <strong>-</strong> y <strong>+</strong>. Las cantidades se calculan solas.",
         helpSec2Point2: "<strong>Cambiar unidades:</strong> Elige <strong>Métrico</strong> (gramos y ml) o <strong>Imperial</strong> (onzas y tazas).",
@@ -682,10 +718,16 @@
         addRecipe: "Añadir Receta",
         saved: "Guardadas",
         tabText: "📝 Texto / Copiar",
+        tabUrl: "🔗 Enlace Web",
         tabImage: "📸 Captura / Foto",
         rawPlaceholder: "Pega aquí el texto de la receta, publicación o lista de ingredientes...",
+        urlPlaceholder: "Pega aquí el enlace de la receta (ej. https://...)",
         parseText: "✨ Formatear y Analizar",
         parsingText: "⏳ Analizando con Gemini...",
+        scrapeUrl: "🌐 Extraer Receta del Enlace",
+        scrapingUrl: "⏳ Extrayendo receta del enlace...",
+        pasteClipboard: "📋 Pegar",
+        enterValidUrl: "¡Por favor, ingresa un enlace web válido!",
         dropScreenshot: "Haz clic o arrastra una captura aquí",
         dropSupported: "Formatos admitidos: JPEG, PNG, WebP",
         parseImage: "🔍 Extraer Receta con OCR",
@@ -696,7 +738,7 @@
         allTags: "Todas",
         noMatchingRecipes: "No se encontraron recetas.",
         noRecipeTitle: "Ninguna receta seleccionada",
-        noRecipeSub: "Pega una receta o sube una imagen a la izquierda, o elige una de tu colección.",
+        noRecipeSub: "Pega una receta, introduce un enlace web o sube una imagen a la izquierda.",
         metricBtn: "Métrico (g / ml)",
         imperialBtn: "Imperial (oz / tazas)",
         servingsLabel: "Porciones:",
@@ -749,9 +791,13 @@
         tipAddRecipe: "Limpia la pantalla para crear una nueva receta",
         tipSavedCount: "Total de recetas guardadas en tu colección",
         tipTabText: "Escribe o pega texto de la receta aquí",
+        tipTabUrl: "Importar receta desde un enlace web",
         tipTabImage: "Sube una foto o captura de pantalla de la receta",
         tipRawInput: "Pega el texto o lista de ingredientes aquí",
+        tipUrlInput: "Pega el enlace web de la receta aquí",
+        tipPasteClipboard: "Pegar texto desde el portapapeles",
         tipParseText: "Lee el texto y conviértelo en una receta limpia",
+        tipScrapeUrl: "Consultar página web y extraer la receta",
         tipDropZone: "Haz clic o arrastra una foto aquí",
         tipParseImage: "Lee la foto y conviértela en una receta limpia",
         tipSearch: "Escribe para buscar recetas, ingredientes o etiquetas",
@@ -786,15 +832,16 @@
         tipDeleteRecipe: "Eliminar esta receta de tu colección"
       },
       fr: {
-        appSubtitle: "Transformez vos recettes et photos en étapes claires, ajustez les portions et cuisinez sereinement.",
+        appSubtitle: "Transformez vos recettes, liens web et photos en étapes claires, ajustez les portions et cuisinez sereinement.",
         help: "Aide",
         helpModalTitle: "Comment utiliser Recipe Deck",
         helpModalSubtitle: "Guide simple étape par étape pour cuisiner et enregistrer vos recettes",
         helpGotIt: "Compris ! 👍",
         helpSec1Title: "1. Comment ajouter une recette",
-        helpSec1Body: "Vous pouvez ajouter une recette de deux manières très simples :",
-        helpSec1Point1: "<strong>Coller du texte :</strong> Copiez le texte de votre recette et cliquez sur <em>✨ Formater et Extraire</em>.",
-        helpSec1Point2: "<strong>Téléverser une photo :</strong> Prenez une photo ou capture d'écran et cliquez sur <em>🔍 Extraire via OCR</em>.",
+        helpSec1Body: "Vous pouvez ajouter une recette de trois manières très simples :",
+        helpSec1Point1: "<strong>Coller du texte :</strong> Copiez le texte ou cliquez sur <em>📋 Coller</em>, puis <em>✨ Formater et Extrair</em>.",
+        helpSec1Point2: "<strong>Lien Web :</strong> Collez l'adresse web de la recette dans <em>🔗 Lien Web</em> et cliquez sur <em>🌐 Importer depuis le lien</em>.",
+        helpSec1Point3: "<strong>Téléverser une photo :</strong> Prenez une photo ou capture d'écran et cliquez sur <em>🔍 Extraire via OCR</em>.",
         helpSec2Title: "2. Modifier les portions et unités",
         helpSec2Point1: "<strong>Portions :</strong> Cliquez sur <strong>-</strong> et <strong>+</strong> pour recalculer tous les ingrédients.",
         helpSec2Point2: "<strong>Unités :</strong> Basculez entre <strong>Métrique</strong> (g / ml) et <strong>Impérial</strong> (oz / tasses).",
@@ -812,10 +859,16 @@
         addRecipe: "Ajouter une recette",
         saved: "Enregistrées",
         tabText: "📝 Texte / Légende",
+        tabUrl: "🔗 Lien Web",
         tabImage: "📸 Capture / Photo",
         rawPlaceholder: "Collez ici le texte de la recette, le post ou la liste d'ingrédients...",
+        urlPlaceholder: "Collez le lien de la recette ici (ex: https://...)",
         parseText: "✨ Formater et Extraire",
         parsingText: "⏳ Analyse avec Gemini...",
+        scrapeUrl: "🌐 Importer depuis le lien",
+        scrapingUrl: "⏳ Extraction de la recette...",
+        pasteClipboard: "📋 Coller",
+        enterValidUrl: "Veuillez saisir un lien web valide !",
         dropScreenshot: "Cliquez ou glissez une capture ici",
         dropSupported: "Formats JPEG, PNG, WebP supportés",
         parseImage: "🔍 Extraire via OCR",
@@ -826,7 +879,7 @@
         allTags: "Toutes",
         noMatchingRecipes: "Aucune recette trouvée.",
         noRecipeTitle: "Aucune recette active",
-        noRecipeSub: "Collez un texte ou téléversez une image à gauche, ou sélectionnez une recette.",
+        noRecipeSub: "Collez un texte, saisissez un lien web ou téléversez une image à gauche.",
         metricBtn: "Métrique (g / ml)",
         imperialBtn: "Impérial (oz / tasses)",
         servingsLabel: "Portions :",
@@ -879,9 +932,13 @@
         tipAddRecipe: "Effacer l'écran pour ajouter une nouvelle recette",
         tipSavedCount: "Total des recettes enregistrées dans votre carnet",
         tipTabText: "Tapez ou collez le texte de la recette ici",
+        tipTabUrl: "Importer une recette depuis un lien web",
         tipTabImage: "Téléversez une photo ou capture d'écran",
         tipRawInput: "Collez votre texte ou liste d'ingrédients ici",
+        tipUrlInput: "Collez le lien web de la recette ici",
+        tipPasteClipboard: "Coller depuis le presse-papiers",
         tipParseText: "Analyser le texte et générer la recette",
+        tipScrapeUrl: "Consulter la page web et extraire la recette",
         tipDropZone: "Glissez ou cliquez pour ajouter une photo",
         tipParseImage: "Analyser l'image avec OCR pour extraire la recette",
         tipSearch: "Rechercher par nom, ingrédient ou étiquette",
@@ -916,15 +973,16 @@
         tipDeleteRecipe: "Supprimer cette recette du carnet"
       },
       de: {
-        appSubtitle: "Verwandle Rezepte und Fotos in einfache Schritte, passe Portionen an und koche entspannt.",
+        appSubtitle: "Verwandle Rezepte, Links und Fotos in einfache Schritte, passe Portionen an und koche entspannt.",
         help: "Hilfe",
         helpModalTitle: "So benutzt du Recipe Deck",
         helpModalSubtitle: "Einfache Schritt-für-Schritt-Anleitung zum Kochen und Speichern",
         helpGotIt: "Verstanden! 👍",
         helpSec1Title: "1. Rezept hinzufügen",
-        helpSec1Body: "Du kannst Rezepte ganz einfach auf zwei Arten erfassen:",
-        helpSec1Point1: "<strong>Text einfügen:</strong> Kopiere den Rezepttext und klicke auf <em>✨ Formatieren & Analysieren</em>.",
-        helpSec1Point2: "<strong>Foto hochladen:</strong> Mache ein Foto oder einen Screenshot und klicke auf <em>🔍 Rezept via OCR erfassen</em>.",
+        helpSec1Body: "Du kannst Rezepte ganz einfach auf drei Arten erfassen:",
+        helpSec1Point1: "<strong>Text einfügen:</strong> Rezepttext kopieren oder auf <em>📋 Einfügen</em> tippen, dann auf <em>✨ Formatieren & Analysieren</em>.",
+        helpSec1Point2: "<strong>Web-Link:</strong> Rezept-Link in <em>🔗 Web-Link</em> einfügen und auf <em>🌐 Rezept vom Link importieren</em> klicken.",
+        helpSec1Point3: "<strong>Foto hochladen:</strong> Mache ein Foto oder einen Screenshot und klicke auf <em>🔍 Rezept via OCR erfassen</em>.",
         helpSec2Title: "2. Portionen & Maßeinheiten anpassen",
         helpSec2Point1: "<strong>Portionen:</strong> Klicke auf <strong>-</strong> und <strong>+</strong> zum automatischen Umrechnen.",
         helpSec2Point2: "<strong>Einheiten:</strong> Wechsle zwischen <strong>Metrisch</strong> (g / ml) und <strong>Imperial</strong> (oz / cups).",
@@ -942,10 +1000,16 @@
         addRecipe: "Rezept hinzufügen",
         saved: "Gespeichert",
         tabText: "📝 Text / Beschreibung",
+        tabUrl: "🔗 Web-Link",
         tabImage: "📸 Screenshot / Foto",
         rawPlaceholder: "Rezepttext, Social-Media-Beitrag oder Zutatenliste hier einfügen...",
+        urlPlaceholder: "Rezept-Link hier einfügen (z.B. https://...)",
         parseText: "✨ Formatieren & Analysieren",
         parsingText: "⏳ Analysiere mit Gemini...",
+        scrapeUrl: "🌐 Rezept vom Link importieren",
+        scrapingUrl: "⏳ Importiere Rezept...",
+        pasteClipboard: "📋 Einfügen",
+        enterValidUrl: "Bitte gib einen gültigen Rezept-Link ein!",
         dropScreenshot: "Screenshot hierher ziehen oder klicken",
         dropSupported: "JPEG, PNG, WebP unterstützt",
         parseImage: "🔍 Rezept via OCR erfassen",
@@ -956,7 +1020,7 @@
         allTags: "Alle",
         noMatchingRecipes: "Keine passenden Rezepte gefunden.",
         noRecipeTitle: "Kein aktives Rezept",
-        noRecipeSub: "Füge links ein Rezept ein oder wähle eines aus deiner Sammlung.",
+        noRecipeSub: "Füge links ein Rezept ein, gib einen Link ein oder wähle eines aus deiner Sammlung.",
         metricBtn: "Metrisch (g / ml)",
         imperialBtn: "Imperial (oz / cups)",
         servingsLabel: "Portionen:",
@@ -1009,9 +1073,13 @@
         tipAddRecipe: "Ansicht leeren und neues Rezept starten",
         tipSavedCount: "Gesamtzahl der gespeicherten Rezepte",
         tipTabText: "Rezepttext hier eingeben oder einfügen",
+        tipTabUrl: "Rezept von einem Web-Link importieren",
         tipTabImage: "Rezeptfoto oder Screenshot hochladen",
         tipRawInput: "Rezepttext oder Zutatenliste hier einfügen",
+        tipUrlInput: "Web-Link des Rezepts hier einfügen",
+        tipPasteClipboard: "Text aus der Zwischenablage einfügen",
         tipParseText: "Text analysieren und formatiertes Rezept erstellen",
+        tipScrapeUrl: "Webseite aufrufen und Rezept extrahieren",
         tipDropZone: "Foto hier ablegen oder anklicken",
         tipParseImage: "Foto mit OCR auslesen und Rezept extrahieren",
         tipSearch: "Nach Namen, Zutaten oder Tags suchen",
@@ -1046,15 +1114,16 @@
         tipDeleteRecipe: "Dieses Rezept aus der Sammlung löschen"
       },
       it: {
-        appSubtitle: "Trasforma qualsiasi ricetta o foto in passaggi chiari, adatta le dosi e cucina passo dopo passo.",
+        appSubtitle: "Trasforma qualsiasi ricetta, link o foto in passaggi chiari, adatta le dosi e cucina passo dopo passo.",
         help: "Guida",
         helpModalTitle: "Come usare Recipe Deck",
         helpModalSubtitle: "Guida semplice e chiara per cucinare e salvare le tue ricette",
         helpGotIt: "Ho capito! 👍",
         helpSec1Title: "1. Come aggiungere una ricetta",
-        helpSec1Body: "Puoi inserire ricette in due modi semplicissimi:",
-        helpSec1Point1: "<strong>Incolla testo:</strong> Copia il testo o un post e tocca <em>✨ Formatta e Analizza</em>.",
-        helpSec1Point2: "<strong>Carica foto:</strong> Scatta una foto o screenshot e tocca <em>🔍 Estrai tramite OCR</em>.",
+        helpSec1Body: "Puoi inserire ricette in tre modi semplicissimi:",
+        helpSec1Point1: "<strong>Incolla testo:</strong> Copia il testo o tocca <em>📋 Incolla</em>, poi <em>✨ Formatta e Analizza</em>.",
+        helpSec1Point2: "<strong>Link Web:</strong> Incolla l'indirizzo web in <em>🔗 Link Web</em> e tocca <em>🌐 Importa ricetta dal link</em>.",
+        helpSec1Point3: "<strong>Carica foto:</strong> Scatta una foto o screenshot e tocca <em>🔍 Estrai tramite OCR</em>.",
         helpSec2Title: "2. Porzioni e unità di misura",
         helpSec2Point1: "<strong>Porzioni:</strong> Tocca <strong>-</strong> e <strong>+</strong> per ricalcolare tutte le dosi.",
         helpSec2Point2: "<strong>Unità:</strong> Scegli tra <strong>Metrico</strong> (g / ml) e <strong>Imperiale</strong> (oz / tazze).",
@@ -1072,10 +1141,16 @@
         addRecipe: "Aggiungi Ricetta",
         saved: "Salvate",
         tabText: "📝 Testo / Didascalia",
+        tabUrl: "🔗 Link Web",
         tabImage: "📸 Screenshot / Foto",
         rawPlaceholder: "Incolla qui il testo della ricetta o la lista degli ingredienti...",
+        urlPlaceholder: "Incolla qui il link della ricetta (es. https://...)",
         parseText: "✨ Formatta e Analizza",
         parsingText: "⏳ Analisi con Gemini...",
+        scrapeUrl: "🌐 Importa ricetta dal link",
+        scrapingUrl: "⏳ Estrazione ricetta in corso...",
+        pasteClipboard: "📋 Incolla",
+        enterValidUrl: "Inserisci un link web valido!",
         dropScreenshot: "Clicca o trascina uno screenshot qui",
         dropSupported: "Supporta JPEG, PNG, WebP",
         parseImage: "🔍 Estrai tramite OCR",
@@ -1086,7 +1161,7 @@
         allTags: "Tutte",
         noMatchingRecipes: "Nessuna ricetta corrispondente trovata.",
         noRecipeTitle: "Nessuna ricetta attiva",
-        noRecipeSub: "Incolla una ricetta a sinistra o scegline una dalla tua raccolta.",
+        noRecipeSub: "Incolla una ricetta, inserisci un link web o carica una foto a sinistra.",
         metricBtn: "Metrico (g / ml)",
         imperialBtn: "Imperiale (oz / tazze)",
         servingsLabel: "Porzioni:",
@@ -1139,9 +1214,13 @@
         tipAddRecipe: "Svuota la schermata per aggiungere una nuova ricetta",
         tipSavedCount: "Totale ricette salvate nella tua raccolta",
         tipTabText: "Scrivi o incolla qui il testo della ricetta",
+        tipTabUrl: "Importa una ricetta da un link web",
         tipTabImage: "Carica una foto o screenshot della ricetta",
         tipRawInput: "Incolla il testo o gli ingredienti qui",
+        tipUrlInput: "Incolla qui l'indirizzo web della ricetta",
+        tipPasteClipboard: "Incolla il testo dagli appunti",
         tipParseText: "Analizza il testo e crea la scheda ricetta",
+        tipScrapeUrl: "Scarica la pagina web ed estrai la ricetta",
         tipDropZone: "Clicca o trascina una foto qui",
         tipParseImage: "Analizza l'immagine con OCR per estrarre la ricetta",
         tipSearch: "Cerca ricette per nome, ingrediente o tag",
@@ -1176,15 +1255,16 @@
         tipDeleteRecipe: "Elimina questa ricetta dalla raccolta"
       },
       th: {
-        appSubtitle: "เปลี่ยนข้อความหรือรูปภาพสูตรอาหารเป็นขั้นตอนที่เข้าใจง่าย ปรับขนาดที่เสิร์ฟ และทำอาหารตามทีละขั้น",
+        appSubtitle: "เปลี่ยนข้อความ ลิงก์เว็บ หรือรูปภาพเป็นขั้นตอนที่เข้าใจง่าย ปรับขนาดที่เสิร์ฟ และทำอาหารตามทีละขั้น",
         help: "ช่วยเหลือ",
         helpModalTitle: "วิธีใช้งาน Recipe Deck",
         helpModalSubtitle: "คู่มือง่ายๆ สำหรับการทำอาหารและบันทึกสูตรอาหาร",
         helpGotIt: "เข้าใจแล้ว! 👍",
         helpSec1Title: "1. วิธีเพิ่มสูตรอาหาร",
-        helpSec1Body: "คุณสามารถเพิ่มสูตรอาหารได้ 2 วิธีง่ายๆ:",
-        helpSec1Point1: "<strong>วางข้อความ:</strong> คัดลอกข้อความสูตรแล้วแตะ <em>✨ จัดรูปแบบและแยกข้อมูล</em>",
-        helpSec1Point2: "<strong>อัปโหลดรูปภาพ:</strong> ถ่ายรูปสูตรอาหารแล้วแตะ <em>🔍 สแกน OCR และสกัดสูตรอาหาร</em>",
+        helpSec1Body: "คุณสามารถเพิ่มสูตรอาหารได้ 3 วิธีง่ายๆ:",
+        helpSec1Point1: "<strong>วางข้อความ:</strong> คัดลอกข้อความสูตรหรือแตะ <em>📋 วาง</em> แล้วแตะ <em>✨ จัดรูปแบบและแยกข้อมูล</em>",
+        helpSec1Point2: "<strong>ลิงก์เว็บ:</strong> วางลิงก์หน้าเว็บสูตรอาหารใน <em>🔗 ลิงก์เว็บ</em> แล้วแตะ <em>🌐 สกัดและนำเข้าสูตรจากลิงก์</em>",
+        helpSec1Point3: "<strong>อัปโหลดรูปภาพ:</strong> ถ่ายรูปสูตรอาหารแล้วแตะ <em>🔍 สแกน OCR และสกัดสูตรอาหาร</em>",
         helpSec2Title: "2. ปรับจำนวนที่เสิร์ฟและหน่วยวัด",
         helpSec2Point1: "<strong>ปรับจำนวนที่เสิร์ฟ:</strong> แตะปุ่ม <strong>-</strong> และ <strong>+</strong> ปริมาณวัตถุดิบจะคำนวณให้อัตโนมัติ",
         helpSec2Point2: "<strong>เปลี่ยนหน่วย:</strong> เลือกระหว่าง <strong>เมตริก</strong> (กรัม/มล.) หรือ <strong>อิมพีเรียล</strong> (ออนซ์/ถ้วย)",
@@ -1202,10 +1282,16 @@
         addRecipe: "เพิ่มสูตรอาหาร",
         saved: "บันทึกแล้ว",
         tabText: "📝 ข้อความ / แคปชั่น",
+        tabUrl: "🔗 ลิงก์เว็บ",
         tabImage: "📸 ภาพหน้าจอ / รูปถ่าย",
         rawPlaceholder: "วางข้อความสูตรอาหาร แคปชั่นโซเชียล หรือรายการวัตถุดิบที่นี่...",
+        urlPlaceholder: "วางลิงก์สูตรอาหารที่นี่ (เช่น https://...)",
         parseText: "✨ จัดรูปแบบและแยกข้อมูล",
         parsingText: "⏳ กำลังประมวลผลด้วย Gemini...",
+        scrapeUrl: "🌐 สกัดและนำเข้าสูตรจากลิงก์",
+        scrapingUrl: "⏳ กำลังสกัดสูตรอาหาร...",
+        pasteClipboard: "📋 วาง",
+        enterValidUrl: "กรุณาระบุลิงก์เว็บไซต์สูตรอาหารที่ถูกต้อง!",
         dropScreenshot: "คลิกหรือลากภาพหน้าจอมาวางที่นี่",
         dropSupported: "รองรับ JPEG, PNG, WebP",
         parseImage: "🔍 สแกน OCR และสกัดสูตรอาหาร",
@@ -1216,7 +1302,7 @@
         allTags: "ทั้งหมด",
         noMatchingRecipes: "ไม่พบสูตรอาหารที่ตรงกัน",
         noRecipeTitle: "ยังไม่มีสูตรอาหารที่เลือก",
-        noRecipeSub: "วางข้อความสูตรหรืออัปโหลดรูปภาพทางด้านซ้าย หรือเลือกสูตรจากคลังของคุณ",
+        noRecipeSub: "วางข้อความสูตร ระบุลิงก์เว็บ หรืออัปโหลดรูปภาพทางด้านซ้าย",
         metricBtn: "เมตริก (กรัม / มล.)",
         imperialBtn: "อิมพีเรียล (ออนซ์ / ถ้วย)",
         servingsLabel: "จำนวนที่เสิร์ฟ:",
@@ -1269,9 +1355,13 @@
         tipAddRecipe: "ล้างหน้าจอเพื่อเริ่มเพิ่มสูตรอาหารใหม่",
         tipSavedCount: "จำนวนสูตรอาหารทั้งหมดที่บันทึกไว้",
         tipTabText: "พิมพ์หรือวางข้อความสูตรอาหารที่นี่",
+        tipTabUrl: "นำเข้าสูตรอาหารจากลิงก์เว็บไซต์",
         tipTabImage: "อัปโหลดรูปภาพหรือภาพหน้าจอสูตรอาหาร",
         tipRawInput: "วางข้อความหรือรายการวัตถุดิบที่นี่",
+        tipUrlInput: "วางลิงก์เว็บไซต์ของสูตรอาหารที่นี่",
+        tipPasteClipboard: "วางข้อความจากคลิปบอร์ด",
         tipParseText: "อ่านข้อความและสกัดเป็นสูตรอาหาร",
+        tipScrapeUrl: "ดึงข้อมูลจากเว็บไซต์และสกัดเป็นสูตรอาหาร",
         tipDropZone: "คลิกหรือลากรูปถ่ายมาวางที่นี่",
         tipParseImage: "สแกนรูปภาพเพื่อสกัดเป็นสูตรอาหาร",
         tipSearch: "ค้นหาตามชื่อสูตร วัตถุดิบ หรือแท็ก",
@@ -1306,15 +1396,16 @@
         tipDeleteRecipe: "ลบสูตรอาหารนี้ออกจากคลัง"
       },
       ja: {
-        appSubtitle: "テキストや写真からレシピをわかりやすく抽出し、人数分量を自動計算して手順通りに調理できます。",
+        appSubtitle: "テキスト、Webリンク、写真からレシピを抽出し、人数分量を自動計算して手順通りに調理できます。",
         help: "ヘルプ",
         helpModalTitle: "Recipe Deck の使い方",
         helpModalSubtitle: "料理とレシピ保存のための簡単ステップガイド",
         helpGotIt: "了解しました！ 👍",
         helpSec1Title: "1. レシピの追加方法",
-        helpSec1Body: "2つの簡単な方法でレシピを登録できます:",
-        helpSec1Point1: "<strong>テキスト貼り付け:</strong> レシピの文章を貼り付けて <em>✨ フォーマットと解析</em> をタップします。",
-        helpSec1Point2: "<strong>写真アップロード:</strong> スマホの写真やスクショを選んで <em>🔍 OCRでレシピを抽出</em> をタップします。",
+        helpSec1Body: "3つの簡単な方法でレシピを登録できます:",
+        helpSec1Point1: "<strong>テキスト貼り付け:</strong> レシピの文章を入力するか <em>📋 貼り付け</em> をタップし、<em>✨ フォーマットと解析</em> を押します。",
+        helpSec1Point2: "<strong>Webリンク:</strong> レシピのURLを <em>🔗 Web URL</em> に貼り付けて <em>🌐 URLからレシピを取り込む</em> をタップします。",
+        helpSec1Point3: "<strong>写真アップロード:</strong> スマホの写真やスクショを選んで <em>🔍 OCRでレシピを抽出</em> をタップします。",
         helpSec2Title: "2. 人数・分量と単位の変更",
         helpSec2Point1: "<strong>人数・分量の変更:</strong> <strong>-</strong> と <strong>+</strong> ボタンで材料の分量が自動計算されます。",
         helpSec2Point2: "<strong>単位の切り替え:</strong> <strong>メートル法</strong> (g / ml) と <strong>ヤード・ポンド法</strong> (oz / cups) をワンタップで切り替え。",
@@ -1332,10 +1423,16 @@
         addRecipe: "レシピを追加",
         saved: "保存済み",
         tabText: "📝 テキスト / キャプション",
+        tabUrl: "🔗 Web URL",
         tabImage: "📸 スクショ / 写真",
         rawPlaceholder: "レシピの文章、SNS投稿、材料リストをここに貼り付けてください...",
+        urlPlaceholder: "レシピのURLをここに貼り付け (例: https://...)",
         parseText: "✨ フォーマットと解析",
         parsingText: "⏳ Geminiで解析中...",
+        scrapeUrl: "🌐 URLからレシピを取り込む",
+        scrapingUrl: "⏳ レシピを抽出中...",
+        pasteClipboard: "📋 貼り付け",
+        enterValidUrl: "有効なレシピのURLを入力してください！",
         dropScreenshot: "スクリーンショットをクリックまたはドラッグ",
         dropSupported: "JPEG, PNG, WebP対応",
         parseImage: "🔍 OCRでレシピを抽出",
@@ -1346,7 +1443,7 @@
         allTags: "すべて",
         noMatchingRecipes: "該当するレシピが見つかりません。",
         noRecipeTitle: "表示中のレシピはありません",
-        noRecipeSub: "左側からテキストを入力するか画像をアップロード、またはコレクションから選択してください。",
+        noRecipeSub: "左側からテキストを入力、Webリンクを入力、または画像をアップロードしてください。",
         metricBtn: "メートル法 (g / ml)",
         imperialBtn: "ヤード・ポンド法 (oz / cups)",
         servingsLabel: "人数・分量:",
@@ -1399,9 +1496,13 @@
         tipAddRecipe: "画面をクリアして新しいレシピを追加",
         tipSavedCount: "保存済みレシピの合計数",
         tipTabText: "ここにレシピのテキストを入力または貼り付け",
+        tipTabUrl: "Webサイトのリンクからレシピを取り込む",
         tipTabImage: "レシピの写真またはスクリーンショットをアップロード",
         tipRawInput: "レシピの文章や材料リストをここに貼り付け",
+        tipUrlInput: "レシピのWebリンクをここに貼り付け",
+        tipPasteClipboard: "クリップボードから貼り付け",
         tipParseText: "テキストを解析してきれいなレシピを作成",
+        tipScrapeUrl: "Webページを取得してレシピを抽出",
         tipDropZone: "ここに写真をクリックまたはドラッグ",
         tipParseImage: "写真からOCRでレシピを自動抽出",
         tipSearch: "レシピ名、材料、タグで検索",
@@ -1436,15 +1537,16 @@
         tipDeleteRecipe: "このレシピをコレクションから削除"
       },
       vi: {
-        appSubtitle: "Biến mọi công thức và hình ảnh thành các bước dễ hiểu, thay đổi khẩu phần và nấu ăn từng bước một.",
+        appSubtitle: "Biến mọi công thức, liên kết web hoặc hình ảnh thành các bước dễ hiểu, thay đổi khẩu phần và nấu ăn từng bước một.",
         help: "Trợ giúp",
         helpModalTitle: "Cách sử dụng Recipe Deck",
         helpModalSubtitle: "Hướng dẫn từng bước đơn giản giúp bạn nấu ăn và lưu công thức",
         helpGotIt: "Đã hiểu! 👍",
         helpSec1Title: "1. Cách thêm công thức",
-        helpSec1Body: "Bạn có thể thêm công thức theo 2 cách đơn giản:",
-        helpSec1Point1: "<strong>Dán văn bản:</strong> Sao chép văn bản công thức và nhấn <em>✨ Định dạng & Trích xuất</em>.",
-        helpSec1Point2: "<strong>Tải ảnh lên:</strong> Chọn ảnh chụp màn hình hoặc ảnh món ăn và nhấn <em>🔍 Quét OCR & Trích xuất</em>.",
+        helpSec1Body: "Bạn có thể thêm công thức theo 3 cách đơn giản:",
+        helpSec1Point1: "<strong>Dán văn bản:</strong> Sao chép văn bản hoặc nhấn <em>📋 Dán</em>, sau đó nhấn <em>✨ Định dạng & Trích xuất</em>.",
+        helpSec1Point2: "<strong>Đường dẫn Web:</strong> Dán link trang web công thức vào <em>🔗 Đường dẫn Web</em> và nhấn <em>🌐 Trích xuất công thức từ liên kết</em>.",
+        helpSec1Point3: "<strong>Tải ảnh lên:</strong> Chọn ảnh chụp màn hình hoặc ảnh món ăn và nhấn <em>🔍 Quét OCR & Trích xuất</em>.",
         helpSec2Title: "2. Đổi khẩu phần & Đơn vị đo",
         helpSec2Point1: "<strong>Đổi khẩu phần:</strong> Nhấn <strong>-</strong> và <strong>+</strong> để lượng nguyên liệu tự động thay đổi.",
         helpSec2Point2: "<strong>Đổi đơn vị:</strong> Chọn <strong>Hệ Mét</strong> (g / ml) hoặc <strong>Hệ Anh</strong> (oz / cốc).",
@@ -1462,10 +1564,16 @@
         addRecipe: "Thêm công thức",
         saved: "Đã lưu",
         tabText: "📝 Văn bản / Chú thích",
+        tabUrl: "🔗 Đường dẫn Web",
         tabImage: "📸 Ảnh chụp màn hình / Ảnh",
         rawPlaceholder: "Dán nội dung công thức, bài đăng hoặc danh sách nguyên liệu vào đây...",
+        urlPlaceholder: "Dán đường dẫn công thức tại đây (ví dụ: https://...)",
         parseText: "✨ Định dạng & Trích xuất",
         parsingText: "⏳ Đang phân tích với Gemini...",
+        scrapeUrl: "🌐 Trích xuất công thức từ liên kết",
+        scrapingUrl: "⏳ Đang trích xuất công thức...",
+        pasteClipboard: "📋 Dán",
+        enterValidUrl: "Vui lòng nhập đường dẫn trang web hợp lệ!",
         dropScreenshot: "Nhấp hoặc kéo thả ảnh chụp màn hình vào đây",
         dropSupported: "Hỗ trợ JPEG, PNG, WebP",
         parseImage: "🔍 Quét OCR & Trích xuất",
@@ -1476,7 +1584,7 @@
         allTags: "Tất cả",
         noMatchingRecipes: "Không tìm thấy công thức phù hợp.",
         noRecipeTitle: "Chưa chọn công thức nào",
-        noRecipeSub: "Dán văn bản hoặc tải ảnh lên ở bên trái, hoặc chọn từ bộ sưu tập của bạn.",
+        noRecipeSub: "Dán văn bản, nhập liên kết web hoặc tải ảnh lên ở bên trái.",
         metricBtn: "Hệ Mét (g / ml)",
         imperialBtn: "Hệ Anh (oz / cốc)",
         servingsLabel: "Khẩu phần:",
@@ -1529,9 +1637,13 @@
         tipAddRecipe: "Xóa màn hình để bắt đầu tạo công thức mới",
         tipSavedCount: "Tổng số công thức đã lưu trong bộ sưu tập",
         tipTabText: "Nhập hoặc dán văn bản công thức tại đây",
+        tipTabUrl: "Nhập công thức từ liên kết trang web",
         tipTabImage: "Tải lên hình ảnh hoặc ảnh chụp màn hình",
         tipRawInput: "Dán văn bản hoặc danh sách nguyên liệu vào đây",
+        tipUrlInput: "Dán liên kết web của công thức tại đây",
+        tipPasteClipboard: "Dán văn bản từ bộ nhớ tạm",
         tipParseText: "Phân tích văn bản và tạo công thức chuẩn",
+        tipScrapeUrl: "Tải trang web và trích xuất công thức",
         tipDropZone: "Nhấp hoặc kéo thả ảnh vào đây",
         tipParseImage: "Quét ảnh bằng OCR để trích xuất công thức",
         tipSearch: "Tìm kiếm theo tên công thức, nguyên liệu hoặc thẻ",
@@ -1566,15 +1678,16 @@
         tipDeleteRecipe: "Xóa công thức này khỏi bộ sưu tập"
       },
       zh: {
-        appSubtitle: "智能识别食谱与照片，一键调整份量，大字步骤助您轻松下厨。",
+        appSubtitle: "智能识别食谱、网页链接与照片，一键调整份量，大字步骤助您轻松下厨。",
         help: "帮助",
         helpModalTitle: "如何使用 Recipe Deck",
         helpModalSubtitle: "简单易懂的食谱提取与下厨指南",
         helpGotIt: "知道了！ 👍",
         helpSec1Title: "1. 如何添加食谱",
-        helpSec1Body: "您可以通过两种极简方式添加食谱：",
-        helpSec1Point1: "<strong>粘贴文本：</strong> 复制食谱内容或文案，点击 <em>✨ 格式化并解析</em>。",
-        helpSec1Point2: "<strong>上传照片：</strong> 手机拍照或截图后拖入框中，点击 <em>🔍 OCR 图文识别并提取</em>。",
+        helpSec1Body: "您可以通过三种极简方式添加食谱：",
+        helpSec1Point1: "<strong>粘贴文本：</strong> 复制食谱内容或点击 <em>📋 粘贴</em>，然后点击 <em>✨ 格式化并解析</em>。",
+        helpSec1Point2: "<strong>网页链接：</strong> 在 <em>🔗 网页链接</em> 中粘贴美食网站链接，点击 <em>🌐 抓取并导入网页食谱</em>。",
+        helpSec1Point3: "<strong>上传照片：</strong> 手机拍照或截图后拖入框中，点击 <em>🔍 OCR 图文识别并提取</em>。",
         helpSec2Title: "2. 调整人数份量与计量单位",
         helpSec2Point1: "<strong>调整份量：</strong> 点击 <strong>-</strong> 和 <strong>+</strong> 按钮，食材用量自动精确换算。",
         helpSec2Point2: "<strong>切换单位：</strong> 可在 <strong>公制</strong>（克 / 毫升）与 <strong>英制</strong>（盎司 / 杯）间随时切换。",
@@ -1592,10 +1705,16 @@
         addRecipe: "添加食谱",
         saved: "已保存",
         tabText: "📝 文本 / 说明",
+        tabUrl: "🔗 网页链接",
         tabImage: "📸 截图 / 照片",
         rawPlaceholder: "在此粘贴食谱全文、社交媒体文案或食材清单...",
+        urlPlaceholder: "在此粘贴食谱网页链接（如 https://...）",
         parseText: "✨ 格式化并解析",
         parsingText: "⏳ Gemini 正在解析...",
+        scrapeUrl: "🌐 抓取并导入网页食谱",
+        scrapingUrl: "⏳ 正在抓取并解析网页食谱...",
+        pasteClipboard: "📋 粘贴",
+        enterValidUrl: "请输入有效的食谱网页链接！",
         dropScreenshot: "点击或拖拽食谱截图至此处",
         dropSupported: "支持 JPEG, PNG, WebP",
         parseImage: "🔍 OCR 图文识别并提取",
@@ -1606,7 +1725,7 @@
         allTags: "全部",
         noMatchingRecipes: "未找到匹配的食谱。",
         noRecipeTitle: "当前未选择食谱",
-        noRecipeSub: "在左侧粘贴食谱文本或上传图片，或从收藏夹中选择食谱。",
+        noRecipeSub: "在左侧粘贴食谱文本、输入网页链接或上传图片，或从收藏夹中选择食谱。",
         metricBtn: "公制 (g / ml)",
         imperialBtn: "英制 (oz / 杯)",
         servingsLabel: "份量:",
@@ -1659,9 +1778,13 @@
         tipAddRecipe: "清空界面以添加新食谱",
         tipSavedCount: "已收藏保存的食谱总数",
         tipTabText: "在此输入或粘贴食谱文本",
+        tipTabUrl: "从网页链接导入食谱",
         tipTabImage: "上传食谱照片或截图",
         tipRawInput: "在此粘贴食谱文本或食材清单",
+        tipUrlInput: "在此粘贴食谱网页链接",
+        tipPasteClipboard: "从剪贴板粘贴文本",
         tipParseText: "智能解析文本并生成标准食谱",
+        tipScrapeUrl: "获取网页并提取食谱",
         tipDropZone: "点击或拖拽食谱照片到此处",
         tipParseImage: "OCR识别图片并提取食谱",
         tipSearch: "按食谱名称、食材或标签搜索",
@@ -1696,15 +1819,16 @@
         tipDeleteRecipe: "从收藏夹中删除此食谱"
       },
       pt: {
-        appSubtitle: "Transforme qualquer receita ou foto em passos fáceis, ajuste porções e cozinhe passo a passo.",
+        appSubtitle: "Transforme qualquer receita, link ou foto em passos fáceis, ajuste porções e cozinhe passo a passo.",
         help: "Ajuda",
         helpModalTitle: "Como usar o Recipe Deck",
         helpModalSubtitle: "Guia simples e passo a passo para cozinhar e guardar receitas",
         helpGotIt: "Entendi! 👍",
         helpSec1Title: "1. Como adicionar uma receita",
-        helpSec1Body: "Você pode adicionar receitas de duas formas bem fáceis:",
-        helpSec1Point1: "<strong>Colar texto:</strong> Cole o texto ou publicação no campo e toque em <em>✨ Formatar e Extrair</em>.",
-        helpSec1Point2: "<strong>Enviar foto:</strong> Tire uma foto ou print e toque em <em>🔍 Extrair via OCR</em>.",
+        helpSec1Body: "Você pode adicionar receitas de três formas bem fáceis:",
+        helpSec1Point1: "<strong>Colar texto:</strong> Cole o texto ou toque em <em>📋 Colar</em>, depois em <em>✨ Formatar e Extrair</em>.",
+        helpSec1Point2: "<strong>Link da Web:</strong> Cole o link da receita em <em>🔗 Link da Web</em> e toque em <em>🌐 Importar receita do link</em>.",
+        helpSec1Point3: "<strong>Enviar foto:</strong> Tire uma foto ou print e toque em <em>🔍 Extrair via OCR</em>.",
         helpSec2Title: "2. Mudar porções e medidas",
         helpSec2Point1: "<strong>Porções:</strong> Toque em <strong>-</strong> e <strong>+</strong> para recalcular todos os ingredientes.",
         helpSec2Point2: "<strong>Unidades:</strong> Alterne entre <strong>Métrico</strong> (g / ml) e <strong>Imperial</strong> (oz / xícaras).",
@@ -1722,10 +1846,16 @@
         addRecipe: "Adicionar Receita",
         saved: "Salvas",
         tabText: "📝 Texto / Legenda",
+        tabUrl: "🔗 Link da Web",
         tabImage: "📸 Captura / Foto",
         rawPlaceholder: "Cole aqui o texto da receita, postagem ou lista de ingredientes...",
+        urlPlaceholder: "Cole o link da receita aqui (ex.: https://...)",
         parseText: "✨ Formatar e Extrair",
         parsingText: "⏳ Analisando com Gemini...",
+        scrapeUrl: "🌐 Importar receita do link",
+        scrapingUrl: "⏳ Extraindo receita do link...",
+        pasteClipboard: "📋 Colar",
+        enterValidUrl: "Por favor, insira um link web válido!",
         dropScreenshot: "Clique ou arraste uma captura aqui",
         dropSupported: "Suporta JPEG, PNG, WebP",
         parseImage: "🔍 Extrair via OCR",
@@ -1736,7 +1866,7 @@
         allTags: "Todas",
         noMatchingRecipes: "Nenhuma receita encontrada.",
         noRecipeTitle: "Nenhuma receita selecionada",
-        noRecipeSub: "Cole uma receita ou envie uma foto à esquerda, ou selecione da sua coleção.",
+        noRecipeSub: "Cole uma receita, insira um link web ou envie uma foto à esquerda.",
         metricBtn: "Métrico (g / ml)",
         imperialBtn: "Imperial (oz / xícaras)",
         servingsLabel: "Porções:",
@@ -1789,9 +1919,13 @@
         tipAddRecipe: "Limpar a tela e criar uma nova receita",
         tipSavedCount: "Total de receitas salvas na sua coleção",
         tipTabText: "Digite ou cole o texto da receita aqui",
+        tipTabUrl: "Importar receita de um link da web",
         tipTabImage: "Envie uma foto ou captura de tela",
         tipRawInput: "Cole o texto da receita ou ingredientes aqui",
+        tipUrlInput: "Cole o link da receita aqui",
+        tipPasteClipboard: "Colar texto da área de transferência",
         tipParseText: "Ler o texto e criar a receita formatada",
+        tipScrapeUrl: "Acessar site e extrair a receita",
         tipDropZone: "Clique ou arraste uma foto aqui",
         tipParseImage: "Ler a foto com OCR e extrair a receita",
         tipSearch: "Buscar por nome, ingrediente ou tag",
@@ -1897,6 +2031,12 @@
         tabText.title = t("tipTabText");
       }
 
+      const tabUrl = document.getElementById("tabUrlBtn");
+      if (tabUrl) {
+        tabUrl.innerText = t("tabUrl");
+        tabUrl.title = t("tipTabUrl");
+      }
+
       const tabImg = document.getElementById("tabImageBtn");
       if (tabImg) {
         tabImg.innerText = t("tabImage");
@@ -1909,10 +2049,31 @@
         rawInput.title = t("tipRawInput");
       }
 
+      const urlInput = document.getElementById("urlInput");
+      if (urlInput) {
+        urlInput.placeholder = t("urlPlaceholder");
+        urlInput.title = t("tipUrlInput");
+      }
+
+      const pasteTextLabel = document.getElementById("pasteTextBtnLabel");
+      if (pasteTextLabel) pasteTextLabel.innerText = t("pasteClipboard");
+      const pasteTextBtn = document.getElementById("pasteTextBtn");
+      if (pasteTextBtn) pasteTextBtn.title = t("tipPasteClipboard");
+
+      const pasteUrlLabel = document.getElementById("pasteUrlBtnLabel");
+      if (pasteUrlLabel) pasteUrlLabel.innerText = t("pasteClipboard");
+      const pasteUrlBtn = document.getElementById("pasteUrlBtn");
+      if (pasteUrlBtn) pasteUrlBtn.title = t("tipPasteClipboard");
+
       const parseTextBtn = document.getElementById("parseTextBtn");
       if (parseTextBtn) parseTextBtn.title = t("tipParseText");
       const parseTextBtnLabel = document.getElementById("parseTextBtnLabel");
       if (parseTextBtnLabel) parseTextBtnLabel.innerText = t("parseText");
+
+      const scrapeUrlBtn = document.getElementById("scrapeUrlBtn");
+      if (scrapeUrlBtn) scrapeUrlBtn.title = t("tipScrapeUrl");
+      const scrapeUrlBtnLabel = document.getElementById("scrapeUrlBtnLabel");
+      if (scrapeUrlBtnLabel) scrapeUrlBtnLabel.innerText = t("scrapeUrl");
 
       const dropZone = document.getElementById("dropZone");
       if (dropZone) dropZone.title = t("tipDropZone");
@@ -2054,6 +2215,8 @@
       if (h1P1) h1P1.innerHTML = t("helpSec1Point1");
       const h1P2 = document.getElementById("helpSec1Point2");
       if (h1P2) h1P2.innerHTML = t("helpSec1Point2");
+      const h1P3 = document.getElementById("helpSec1Point3");
+      if (h1P3) h1P3.innerHTML = t("helpSec1Point3");
 
       const h2T = document.getElementById("helpSec2Title");
       if (h2T) h2T.innerText = t("helpSec2Title");
@@ -2099,20 +2262,92 @@
 
     function switchTab(tab) {
       const textBtn = document.getElementById("tabTextBtn");
+      const urlBtn = document.getElementById("tabUrlBtn");
       const imageBtn = document.getElementById("tabImageBtn");
       const textMode = document.getElementById("textMode");
+      const urlMode = document.getElementById("urlMode");
       const imageMode = document.getElementById("imageMode");
 
+      const activeClass = "flex-1 pb-2 border-b-2 border-amber-500 text-amber-400 font-bold cursor-pointer";
+      const inactiveClass = "flex-1 pb-2 text-slate-400 hover:text-white cursor-pointer";
+
+      textBtn.className = tab === 'text' ? activeClass : inactiveClass;
+      if (urlBtn) urlBtn.className = tab === 'url' ? activeClass : inactiveClass;
+      imageBtn.className = tab === 'image' ? activeClass : inactiveClass;
+
       if (tab === 'text') {
-        textBtn.className = "flex-1 pb-2 border-b-2 border-amber-500 text-amber-400 font-bold";
-        imageBtn.className = "flex-1 pb-2 text-slate-400 hover:text-white";
         textMode.classList.remove("hidden");
+        if (urlMode) urlMode.classList.add("hidden");
+        imageMode.classList.add("hidden");
+      } else if (tab === 'url') {
+        textMode.classList.add("hidden");
+        if (urlMode) urlMode.classList.remove("hidden");
         imageMode.classList.add("hidden");
       } else {
-        imageBtn.className = "flex-1 pb-2 border-b-2 border-amber-500 text-amber-400 font-bold";
-        textBtn.className = "flex-1 pb-2 text-slate-400 hover:text-white";
-        imageMode.classList.remove("hidden");
         textMode.classList.add("hidden");
+        if (urlMode) urlMode.classList.add("hidden");
+        imageMode.classList.remove("hidden");
+      }
+    }
+
+    async function handlePasteClipboard(targetInputId) {
+      const input = document.getElementById(targetInputId);
+      if (!input) return;
+      try {
+        if (!navigator.clipboard || !navigator.clipboard.readText) {
+          input.focus();
+          return;
+        }
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          input.value = text.trim();
+          input.focus();
+        }
+      } catch (err) {
+        console.warn("Clipboard read restricted or denied:", err);
+        input.focus();
+      }
+    }
+
+    async function handleScrapeUrl() {
+      const urlInput = document.getElementById("urlInput");
+      const url = urlInput ? urlInput.value.trim() : "";
+      if (!url) {
+        return alert(t("enterValidUrl"));
+      }
+
+      const btn = document.getElementById("scrapeUrlBtn");
+      btn.innerHTML = `<span>${t("scrapingUrl")}</span>`;
+      btn.disabled = true;
+
+      try {
+        const res = await fetch("/api/scrape", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url })
+        });
+
+        if (!res.ok) {
+          let errorMsg = `Server error (${res.status})`;
+          try {
+            const errData = await res.json();
+            if (errData.error) errorMsg = errData.error;
+          } catch (e) {
+            const raw = await res.text();
+            if (raw) errorMsg = raw.slice(0, 150);
+          }
+          throw new Error(errorMsg);
+        }
+
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        loadRecipeIntoView(data);
+      } catch (err) {
+        alert("Error importing recipe from link: " + err.message);
+      } finally {
+        btn.innerHTML = `<span id="scrapeUrlBtnLabel">${t("scrapeUrl")}</span>`;
+        btn.disabled = false;
       }
     }
 
@@ -2197,6 +2432,8 @@
 
       // Clear input fields and previews
       document.getElementById("rawInput").value = "";
+      const urlInp = document.getElementById("urlInput");
+      if (urlInp) urlInp.value = "";
       document.getElementById("imageFileInput").value = "";
       document.getElementById("imagePreview").src = "";
       document.getElementById("previewContainer").classList.add("hidden");
