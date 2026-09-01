@@ -1,0 +1,1772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recipe Deck</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @media print {
+      .no-print { display: none !important; }
+      body { background: white !important; color: black !important; }
+      .print-card { box-shadow: none !important; border: none !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
+      .print-grid { display: grid !important; grid-template-columns: 1fr 2fr !important; gap: 2rem !important; }
+      #recipePhotoPreviewContainer { max-height: 180px !important; margin-bottom: 1rem !important; border: 1px solid #cbd5e1 !important; }
+      #recipePhotoImg { max-height: 180px !important; object-fit: cover !important; }
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.5);
+      border-radius: 9999px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.7);
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+  <div class="max-w-5xl mx-auto px-4 py-8">
+    <header class="flex justify-between items-center mb-8 border-b border-slate-800 pb-4 no-print">
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight text-amber-400">📖 Recipe Deck</h1>
+        <p class="text-sm text-slate-400">Clean extraction, live unit conversions, photo attachments, translations, tags, and interactive Cook Mode</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <button onclick="addNextRecipe()" class="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow">
+          <span>➕</span>
+          <span>Add Recipe</span>
+        </button>
+        <div class="text-sm font-medium bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
+          Saved: <span id="savedCount" class="text-amber-400 font-bold">0</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div class="lg:col-span-5 space-y-6 no-print">
+        
+        <!-- Input Tabs & Ingestion Box -->
+        <div class="bg-slate-800/80 p-5 rounded-xl border border-slate-700 shadow-md">
+          
+          <div class="flex border-b border-slate-700 mb-4 text-xs font-semibold">
+            <button id="tabTextBtn" onclick="switchTab('text')" class="flex-1 pb-2 border-b-2 border-amber-500 text-amber-400 font-bold">📝 Text / Caption</button>
+            <button id="tabImageBtn" onclick="switchTab('image')" class="flex-1 pb-2 text-slate-400 hover:text-white">📸 Screenshot / Photo</button>
+          </div>
+
+          <!-- Text Mode Form -->
+          <div id="textMode">
+            <textarea id="rawInput" rows="6" placeholder="Paste full post, Instagram caption, or ingredients list here..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-200 resize-y mb-3"></textarea>
+            <button id="parseTextBtn" onclick="handleParseText()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-lg transition flex justify-center items-center gap-2">
+              <span>✨ Format & Parse Text</span>
+            </button>
+          </div>
+
+          <!-- Image / Screenshot Mode Form -->
+          <div id="imageMode" class="hidden">
+            <div id="dropZone" onclick="document.getElementById('imageFileInput').click()" class="border-2 border-dashed border-slate-600 hover:border-amber-500 bg-slate-900/60 rounded-lg p-6 text-center cursor-pointer transition mb-3">
+              <input type="file" id="imageFileInput" accept="image/*" class="hidden" onchange="handleFileSelected(event)">
+              <div id="previewContainer" class="hidden mb-3 flex justify-center">
+                <img id="imagePreview" class="max-h-44 rounded-lg object-contain border border-slate-700">
+              </div>
+              <div id="dropPrompt">
+                <span class="text-3xl block mb-2">📸</span>
+                <p class="text-xs font-semibold text-slate-200">Click or drag screenshot here</p>
+                <p class="text-[11px] text-slate-400 mt-1">JPEG, PNG, WebP supported</p>
+              </div>
+            </div>
+            <button id="parseImageBtn" onclick="handleParseImage()" disabled class="w-full bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-bold py-2.5 rounded-lg transition flex justify-center items-center gap-2">
+              <span>🔍 OCR & Extract Recipe</span>
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Saved Recipes Sidebar Collection Box -->
+        <div class="bg-slate-800/80 p-5 rounded-xl border border-slate-700 shadow-md">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-semibold text-slate-200">Your Recipe Collection</h3>
+            <span class="text-[11px] text-slate-400">SQLite Database</span>
+          </div>
+
+          <!-- Live Search Input -->
+          <div class="mb-2.5">
+            <input id="sidebarSearchInput" type="text" placeholder="🔍 Search recipes, ingredients, or tags..." oninput="filterSavedRecipes()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-500">
+          </div>
+
+          <!-- Dynamic Tag Filter Pills -->
+          <div id="tagFilterBar" class="flex gap-1.5 overflow-x-auto pb-2 mb-2 custom-scrollbar text-xs">
+            <!-- Populated dynamically -->
+          </div>
+
+          <!-- Saved Recipe List -->
+          <div id="recipeList" class="space-y-2 max-h-80 overflow-y-auto pr-1 text-sm custom-scrollbar"></div>
+        </div>
+      </div>
+
+      <div class="lg:col-span-7">
+        <div id="emptyState" class="h-96 flex flex-col items-center justify-center border-2 border-dashed border-slate-800 rounded-xl text-slate-500 text-sm no-print p-6 text-center">
+          <span class="text-4xl mb-3">🍳</span>
+          <p class="font-medium text-slate-400 mb-1">No recipe currently active</p>
+          <p class="text-xs text-slate-500 max-w-sm">Paste recipe text or upload a screenshot on the left, or select a recipe from your collection.</p>
+        </div>
+
+        <div id="recipeCard" class="hidden bg-slate-800/90 border border-slate-700 p-6 rounded-2xl shadow-xl print-card">
+          <!-- Primary Actions Toolbar -->
+          <div class="flex flex-wrap justify-between items-center gap-3 pb-3 mb-3 border-b border-slate-700 no-print">
+            <div class="flex items-center bg-slate-900 p-1 rounded-lg border border-slate-700 text-xs font-semibold">
+              <button id="btnMetric" onclick="setUnitSystem('metric')" class="px-3 py-1.5 rounded-md bg-amber-500 text-slate-950 font-bold">Metric (g / ml)</button>
+              <button id="btnImperial" onclick="setUnitSystem('imperial')" class="px-3 py-1.5 rounded-md text-slate-400 hover:text-white">Imperial (oz / cups)</button>
+            </div>
+
+            <div class="flex items-center gap-2 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-700 text-xs">
+              <span class="text-slate-400">Servings:</span>
+              <button onclick="scaleServings(-1)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-amber-400 font-bold">-</button>
+              <span id="currentServings" class="font-bold px-1 text-white">4</span>
+              <button onclick="scaleServings(1)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-amber-400 font-bold">+</button>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+              <button onclick="enterCookMode()" class="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1.5 shadow transition">
+                <span>🍳</span>
+                <span>Cook Mode</span>
+              </button>
+              <button onclick="saveCurrentRecipe()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1">
+                <span>💾</span>
+                <span id="saveBtnLabel">Save to SQLite</span>
+              </button>
+              <button onclick="window.print()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-semibold transition">🖨️ Print</button>
+              <button onclick="addNextRecipe()" class="px-3 py-1.5 bg-slate-700 hover:bg-amber-500 hover:text-slate-950 text-slate-200 rounded-lg text-xs font-semibold transition flex items-center gap-1" title="Clear view and add next recipe">
+                <span>➕</span>
+                <span>Add Next</span>
+              </button>
+              <button onclick="closeActiveRecipe()" class="p-1.5 bg-slate-800 hover:bg-rose-600/30 text-slate-400 hover:text-rose-300 rounded-lg text-xs transition" title="Close recipe view">
+                ✕
+              </button>
+            </div>
+          </div>
+
+          <!-- Translation Toolbar -->
+          <div class="flex flex-wrap items-center justify-between gap-2 p-2.5 mb-4 bg-slate-900/90 rounded-xl border border-slate-700/80 text-xs no-print">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-slate-400 font-medium flex items-center gap-1">
+                <span>🌐</span> Translate:
+              </span>
+              <select id="translationLangSelect" onchange="onTranslationLangChanged()" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1 focus:outline-none focus:ring-1 focus:ring-amber-500">
+                <option value="Spanish">Spanish (Español)</option>
+                <option value="French">French (Français)</option>
+                <option value="German">German (Deutsch)</option>
+                <option value="Italian">Italian (Italiano)</option>
+                <option value="Thai">Thai (ไทย)</option>
+                <option value="Japanese">Japanese (日本語)</option>
+                <option value="Vietnamese">Vietnamese (Tiếng Việt)</option>
+                <option value="Chinese">Chinese (中文)</option>
+                <option value="Portuguese">Portuguese (Português)</option>
+                <option value="Greek">Greek (Ελληνικά)</option>
+                <option value="Hindi">Hindi (हिन्दी)</option>
+                <option value="Arabic">Arabic (العربية)</option>
+                <option value="Korean">Korean (한국어)</option>
+              </select>
+              <button id="btnTranslate" onclick="handleTranslateRecipe()" class="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg transition flex items-center gap-1 shadow">
+                <span>Translate</span>
+              </button>
+              <button id="btnToggleOriginal" onclick="toggleOriginalView()" class="hidden px-3 py-1 bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 rounded-lg font-semibold transition">
+                🔙 Show Original
+              </button>
+            </div>
+            <div id="translationStatus" class="text-[11px] text-slate-400 italic"></div>
+          </div>
+
+          <!-- Recipe Photo Attachment Section -->
+          <div id="recipePhotoSection" class="mb-4">
+            <input type="file" id="recipePhotoFileInput" accept="image/*" class="hidden" onchange="handleRecipePhotoSelected(event)">
+            
+            <!-- When Photo is Attached -->
+            <div id="recipePhotoPreviewContainer" class="hidden relative group rounded-xl overflow-hidden border border-slate-700 bg-slate-950 mb-3">
+              <img id="recipePhotoImg" class="w-full h-48 sm:h-60 object-cover object-center" alt="Recipe Photo">
+              <div class="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent opacity-90 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-end justify-between p-3 no-print">
+                <span class="text-xs font-semibold text-slate-200 bg-slate-900/80 px-2.5 py-1 rounded-lg border border-slate-700 flex items-center gap-1">
+                  <span>📸</span> Attached Photo
+                </span>
+                <div class="flex gap-2">
+                  <button onclick="document.getElementById('recipePhotoFileInput').click()" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow">
+                    <span>📷</span> Change Photo
+                  </button>
+                  <button onclick="removeRecipePhoto()" class="px-3 py-1.5 bg-rose-600/90 hover:bg-rose-600 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow">
+                    <span>🗑️</span> Remove
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- When No Photo is Attached -->
+            <div id="recipePhotoAddContainer" class="no-print mb-3">
+              <div id="recipePhotoDropZone" onclick="document.getElementById('recipePhotoFileInput').click()" class="border-2 border-dashed border-slate-700 hover:border-amber-500/80 bg-slate-900/40 hover:bg-slate-900/80 rounded-xl p-3 text-center cursor-pointer transition flex items-center justify-center gap-2 text-slate-400 hover:text-amber-400 text-xs font-semibold">
+                <span class="text-base">📷</span>
+                <span>Add / Drag Recipe Photo (Auto-resized max 1200px)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recipe Title & Reset Controls -->
+          <div class="flex items-start justify-between gap-4 mb-2">
+            <h2 id="recipeTitle" class="text-2xl font-bold text-amber-400"></h2>
+            <button onclick="resetProgress()" class="no-print text-xs text-slate-400 hover:text-amber-400 px-2 py-1 rounded bg-slate-900/60 border border-slate-700/60 transition shrink-0" title="Reset all checkboxes">
+              🔄 Reset Checks
+            </button>
+          </div>
+
+          <!-- Metadata & Tags -->
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-400 mb-4 font-medium">
+            <span id="prepMeta">Prep: 10m</span>
+            <span>•</span>
+            <span id="cookMeta">Cook: 20m</span>
+            <span>•</span>
+            <span id="yieldMeta">Yield: 4 servings</span>
+          </div>
+
+          <!-- Tags Container -->
+          <div id="recipeTagsContainer" class="flex flex-wrap gap-1.5 mb-6"></div>
+
+          <!-- Ingredients & Instructions Grid -->
+          <div class="print-grid grid grid-cols-1 md:grid-cols-12 gap-6">
+            <div class="md:col-span-5 space-y-3">
+              <div class="flex items-center justify-between border-b border-slate-700 pb-1">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-300">Ingredients</h3>
+                <span id="ingProgressSummary" class="text-[11px] text-slate-400 no-print"></span>
+              </div>
+              <ul id="ingredientsList" class="space-y-2 text-sm text-slate-200"></ul>
+            </div>
+
+            <div class="md:col-span-7 space-y-3">
+              <div class="flex items-center justify-between border-b border-slate-700 pb-1">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-300">Instructions</h3>
+                <span id="instProgressSummary" class="text-[11px] text-slate-400 no-print"></span>
+              </div>
+              <ol id="instructionsList" class="space-y-3 text-sm text-slate-200 leading-relaxed"></ol>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Interactive Cook Mode Overlay -->
+  <div id="cookModeOverlay" class="fixed inset-0 z-50 bg-slate-950 text-slate-100 flex flex-col justify-between hidden select-none">
+    <!-- Top Bar -->
+    <header class="border-b border-slate-800 bg-slate-900/90 px-4 md:px-8 py-3 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3 overflow-hidden">
+        <span class="text-2xl">🍳</span>
+        <div class="truncate">
+          <h2 id="cookRecipeTitle" class="font-bold text-slate-100 truncate text-sm md:text-base"></h2>
+          <div class="flex items-center gap-2 text-xs text-slate-400">
+            <span id="cookStepBadge" class="font-semibold text-amber-400">Step 1 of 4</span>
+            <span>•</span>
+            <span id="cookTimeMeta">Prep: 10m • Cook: 20m</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+        <!-- Screen Wake Lock Indicator -->
+        <div id="wakeLockStatus" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-800 border border-slate-700 text-slate-400 cursor-pointer" onclick="toggleWakeLockManual()" title="Screen Wake Lock">
+          <span id="wakeLockDot" class="w-2 h-2 rounded-full bg-slate-500"></span>
+          <span id="wakeLockLabel" class="hidden sm:inline">Screen Awake</span>
+        </div>
+
+        <!-- Ingredients Drawer Button -->
+        <button onclick="toggleCookIngredientsDrawer()" id="cookIngredientsBtn" class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold transition">
+          <span>🥕 Ingredients</span>
+          <span id="cookIngProgressBadge" class="bg-amber-500/20 text-amber-400 px-1.5 py-0.2 rounded text-[11px] font-bold">0/0</span>
+        </button>
+
+        <!-- Fullscreen API toggle -->
+        <button onclick="toggleFullscreen()" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs border border-slate-700 transition" title="Toggle Fullscreen">
+          <span id="fullscreenIcon">⛶</span>
+        </button>
+
+        <!-- Exit Button -->
+        <button onclick="exitCookMode()" class="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 rounded-lg text-xs font-bold transition flex items-center gap-1">
+          <span>✕</span>
+          <span class="hidden sm:inline">Exit</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Progress Bar -->
+    <div class="w-full bg-slate-800/80 h-1.5">
+      <div id="cookProgressBar" class="bg-amber-500 h-full transition-all duration-300" style="width: 0%;"></div>
+    </div>
+
+    <!-- Main Step Body (Large typography, kitchen-friendly view) -->
+    <main class="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 md:p-12 overflow-y-auto max-w-4xl mx-auto w-full text-center">
+      <div class="w-full space-y-6">
+        
+        <!-- Step Number Pill -->
+        <div>
+          <span id="cookStepPill" class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm md:text-base font-bold tracking-wider uppercase">
+            Step 1 of 4
+          </span>
+        </div>
+
+        <!-- Big Step Text -->
+        <div id="cookStepContent" class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-medium text-slate-100 leading-relaxed sm:leading-snug md:leading-normal min-h-[120px] flex items-center justify-center transition-all px-2">
+          Step text goes here
+        </div>
+
+        <!-- Step Check Toggle (Huge kitchen tap target) -->
+        <div class="flex justify-center pt-2">
+          <button id="cookStepCheckBtn" onclick="toggleCookCurrentStepCheck()" class="px-6 py-3.5 rounded-xl border text-sm md:text-base font-semibold flex items-center gap-3 transition cursor-pointer shadow-md bg-slate-900 border-slate-700 hover:border-amber-500">
+            <span id="cookStepCheckIcon" class="w-6 h-6 rounded flex items-center justify-center border border-slate-600 bg-slate-800 text-xs"></span>
+            <span id="cookStepCheckText">Mark Step as Completed</span>
+          </button>
+        </div>
+
+        <!-- Detected Timers Container -->
+        <div id="cookTimersContainer" class="flex flex-wrap justify-center gap-3 pt-2"></div>
+      </div>
+    </main>
+
+    <!-- Bottom Kitchen Control Bar (Extra Large Tap Targets) -->
+    <footer class="border-t border-slate-800 bg-slate-900/90 px-4 md:px-8 py-4 flex items-center justify-between gap-4">
+      <button id="cookPrevBtn" onclick="prevCookStep()" class="flex-1 max-w-[200px] h-14 md:h-16 bg-slate-800 hover:bg-slate-700 disabled:opacity-20 disabled:pointer-events-none text-slate-100 font-bold rounded-2xl text-base md:text-lg border border-slate-700 flex items-center justify-center gap-2 transition shadow-lg">
+        <span>◀</span>
+        <span>Previous</span>
+      </button>
+
+      <div class="text-center hidden md:block text-xs text-slate-400">
+        Use <kbd class="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 text-slate-300 font-mono">←</kbd> <kbd class="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 text-slate-300 font-mono">→</kbd> to navigate • <kbd class="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 text-slate-300 font-mono">Space</kbd> to check • <kbd class="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 text-slate-300 font-mono">I</kbd> for ingredients
+      </div>
+
+      <button id="cookNextBtn" onclick="nextCookStep()" class="flex-1 max-w-[240px] h-14 md:h-16 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold rounded-2xl text-base md:text-lg flex items-center justify-center gap-2 transition shadow-lg shadow-amber-500/10">
+        <span id="cookNextBtnText">Next Step</span>
+        <span>▶</span>
+      </button>
+    </footer>
+
+    <!-- Slide-over Ingredients Drawer inside Cook Mode -->
+    <div id="cookIngredientsDrawer" class="fixed inset-y-0 right-0 w-full sm:w-96 bg-slate-900 border-l border-slate-800 shadow-2xl p-6 z-50 flex flex-col transform translate-x-full transition-transform duration-300">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <div>
+          <h3 class="font-bold text-amber-400 text-lg">🥕 Ingredients</h3>
+          <p class="text-xs text-slate-400">Scaled for <span id="drawerServings" class="text-white font-semibold">4</span> servings (<span id="drawerUnits" class="text-amber-400">metric</span>)</p>
+        </div>
+        <button onclick="toggleCookIngredientsDrawer()" class="p-2 text-slate-400 hover:text-white rounded-lg bg-slate-800 text-sm">✕</button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto py-4 space-y-2 custom-scrollbar" id="cookDrawerIngredientsList"></div>
+
+      <div class="pt-4 border-t border-slate-800 flex justify-between items-center">
+        <button onclick="resetProgress()" class="text-xs text-slate-400 hover:text-amber-400 transition">Reset All Checks</button>
+        <button onclick="toggleCookIngredientsDrawer()" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-sm transition">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let activeRecipe = null;
+    let originalRecipe = null; // Preserves untranslated base record
+    let baseServings = 4;
+    let currentServingsCount = 4;
+    let currentUnit = 'metric';
+    let selectedImageBase64 = null;
+    let selectedImageMime = "image/jpeg";
+
+    // Translation Cache and Active Language State
+    let translationCache = {}; // lang -> translatedRecipe
+    let currentTranslationLang = null;
+    let isViewingOriginal = true;
+
+    // Active Tag Filter in Sidebar
+    let activeTagFilter = "All";
+    let cachedSavedRecipes = [];
+
+    // Checklist state
+    let checkedIngredients = new Set();
+    let checkedInstructions = new Set();
+
+    // Cook Mode state
+    let cookStepIndex = 0;
+    let isCookModeActive = false;
+    let wakeLock = null;
+    let wakeLockRequested = false;
+
+    // Active timers map: id -> { interval, remainingSeconds, totalSeconds, isRunning, label }
+    let activeTimers = {};
+
+    const CONVERSIONS = {
+      g_to_oz: 0.035274,
+      oz_to_g: 28.3495,
+      ml_to_floz: 0.033814,
+      floz_to_ml: 29.5735
+    };
+
+    // Initialize preferred language from localStorage
+    function getPreferredLanguage() {
+      return localStorage.getItem("recipe_preferred_lang") || "Spanish";
+    }
+
+    function setPreferredLanguage(lang) {
+      localStorage.setItem("recipe_preferred_lang", lang);
+    }
+
+    function initLanguageSelector() {
+      const select = document.getElementById("translationLangSelect");
+      if (select) {
+        select.value = getPreferredLanguage();
+      }
+    }
+
+    function onTranslationLangChanged() {
+      const select = document.getElementById("translationLangSelect");
+      if (select) {
+        setPreferredLanguage(select.value);
+      }
+    }
+
+    function switchTab(tab) {
+      const textBtn = document.getElementById("tabTextBtn");
+      const imageBtn = document.getElementById("tabImageBtn");
+      const textMode = document.getElementById("textMode");
+      const imageMode = document.getElementById("imageMode");
+
+      if (tab === 'text') {
+        textBtn.className = "flex-1 pb-2 border-b-2 border-amber-500 text-amber-400 font-bold";
+        imageBtn.className = "flex-1 pb-2 text-slate-400 hover:text-white";
+        textMode.classList.remove("hidden");
+        imageMode.classList.add("hidden");
+      } else {
+        imageBtn.className = "flex-1 pb-2 border-b-2 border-amber-500 text-amber-400 font-bold";
+        textBtn.className = "flex-1 pb-2 text-slate-400 hover:text-white";
+        imageMode.classList.remove("hidden");
+        textMode.classList.add("hidden");
+      }
+    }
+
+    function handleFileSelected(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      selectedImageMime = file.type;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const fullDataUrl = e.target.result;
+        selectedImageBase64 = fullDataUrl.split(',')[1];
+        document.getElementById("imagePreview").src = fullDataUrl;
+        document.getElementById("previewContainer").classList.remove("hidden");
+        document.getElementById("dropPrompt").classList.add("hidden");
+        document.getElementById("parseImageBtn").disabled = false;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Drag and drop setup for OCR screenshot input
+    const dropZone = document.getElementById("dropZone");
+    if (dropZone) {
+      ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropZone.classList.add("border-amber-500", "bg-slate-900/80");
+        }, false);
+      });
+      ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropZone.classList.remove("border-amber-500", "bg-slate-900/80");
+        }, false);
+      });
+      dropZone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files && files[0]) {
+          handleFileSelected({ target: { files: [files[0]] } });
+        }
+      }, false);
+    }
+
+    // Drag and drop setup for active recipe photo drop zone
+    const recipePhotoDropZone = document.getElementById("recipePhotoDropZone");
+    if (recipePhotoDropZone) {
+      ['dragenter', 'dragover'].forEach(eventName => {
+        recipePhotoDropZone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          recipePhotoDropZone.classList.add("border-amber-500", "bg-slate-900");
+        }, false);
+      });
+      ['dragleave', 'drop'].forEach(eventName => {
+        recipePhotoDropZone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          recipePhotoDropZone.classList.remove("border-amber-500", "bg-slate-900");
+        }, false);
+      });
+      recipePhotoDropZone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files && files[0]) {
+          attachRecipePhotoFile(files[0]);
+        }
+      }, false);
+    }
+
+    /* ==========================================================================
+       "ADD NEXT" & RESET WORKFLOW
+       ========================================================================== */
+    function addNextRecipe() {
+      activeRecipe = null;
+      originalRecipe = null;
+      currentTranslationLang = null;
+      translationCache = {};
+      isViewingOriginal = true;
+
+      // Clear input fields and previews
+      document.getElementById("rawInput").value = "";
+      document.getElementById("imageFileInput").value = "";
+      document.getElementById("imagePreview").src = "";
+      document.getElementById("previewContainer").classList.add("hidden");
+      document.getElementById("dropPrompt").classList.remove("hidden");
+      document.getElementById("parseImageBtn").disabled = true;
+      selectedImageBase64 = null;
+
+      // Switch to text tab by default
+      switchTab('text');
+
+      // Hide recipe card and show empty state
+      document.getElementById("recipeCard").classList.add("hidden");
+      document.getElementById("emptyState").classList.remove("hidden");
+
+      // Auto-focus input box
+      setTimeout(() => {
+        const input = document.getElementById("rawInput");
+        if (input) input.focus();
+      }, 50);
+    }
+
+    function closeActiveRecipe() {
+      activeRecipe = null;
+      originalRecipe = null;
+      currentTranslationLang = null;
+      translationCache = {};
+      isViewingOriginal = true;
+
+      document.getElementById("recipeCard").classList.add("hidden");
+      document.getElementById("emptyState").classList.remove("hidden");
+    }
+
+    /* ==========================================================================
+       CLIENT-SIDE IMAGE COMPRESSION & RESIZING (Canvas Max 1200px)
+       ========================================================================== */
+    function compressImage(file, maxWidth = 1200, maxHeight = 1200, quality = 0.82) {
+      return new Promise((resolve, reject) => {
+        if (!file.type.startsWith("image/")) {
+          return reject(new Error("Selected file is not an image"));
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            let width = img.width;
+            let height = img.height;
+            if (width > maxWidth || height > maxHeight) {
+              if (width / height > maxWidth / maxHeight) {
+                height = Math.round((height * maxWidth) / width);
+                width = maxWidth;
+              } else {
+                width = Math.round((width * maxHeight) / height);
+                height = maxHeight;
+              }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            const dataUrl = canvas.toDataURL('image/jpeg', quality);
+            resolve(dataUrl);
+          };
+          img.onerror = (err) => reject(new Error("Failed to load image"));
+          img.src = e.target.result;
+        };
+        reader.onerror = (err) => reject(new Error("Failed to read file"));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function handleRecipePhotoSelected(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      await attachRecipePhotoFile(file);
+      event.target.value = "";
+    }
+
+    async function attachRecipePhotoFile(file) {
+      if (!activeRecipe) return;
+      try {
+        const compressedDataUrl = await compressImage(file, 1200, 1200, 0.82);
+        activeRecipe.imageAttachment = compressedDataUrl;
+        if (originalRecipe) originalRecipe.imageAttachment = compressedDataUrl;
+
+        // If recipe is already persisted in SQLite, patch immediately
+        if (activeRecipe.id) {
+          await patchRecipeImage(activeRecipe.id, compressedDataUrl);
+        }
+
+        renderRecipe();
+        await updateSavedUI();
+      } catch (err) {
+        alert("Error processing photo: " + err.message);
+      }
+    }
+
+    async function removeRecipePhoto() {
+      if (!activeRecipe) return;
+      if (!confirm("Are you sure you want to remove the photo from this recipe?")) return;
+
+      activeRecipe.imageAttachment = null;
+      if (originalRecipe) originalRecipe.imageAttachment = null;
+
+      // If recipe is already persisted in SQLite, patch immediately
+      if (activeRecipe.id) {
+        await patchRecipeImage(activeRecipe.id, null);
+      }
+
+      renderRecipe();
+      await updateSavedUI();
+    }
+
+    async function patchRecipeImage(id, imageAttachment) {
+      try {
+        const res = await fetch(`/api/recipes/${id}/image`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageAttachment })
+        });
+        if (!res.ok) {
+          throw new Error(`Failed to update photo on server (${res.status})`);
+        }
+      } catch (err) {
+        console.warn("Could not sync photo to SQLite (will retain locally):", err);
+      }
+    }
+
+    /* ==========================================================================
+       RECIPE PARSING & INGESTION
+       ========================================================================== */
+    async function handleParseText() {
+      const rawText = document.getElementById("rawInput").value.trim();
+      if (!rawText) return alert("Please paste recipe text first!");
+
+      const btn = document.getElementById("parseTextBtn");
+      btn.innerHTML = "<span>⏳ Parsing with Gemini...</span>";
+      btn.disabled = true;
+
+      try {
+        const res = await fetch("/api/parse", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ rawText })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        loadRecipeIntoView(data);
+      } catch (err) {
+        alert("Error parsing recipe: " + err.message);
+      } finally {
+        btn.innerHTML = "<span>✨ Format & Parse Text</span>";
+        btn.disabled = false;
+      }
+    }
+
+    async function handleParseImage() {
+      if (!selectedImageBase64) return alert("Please select an image first!");
+
+      const btn = document.getElementById("parseImageBtn");
+      btn.innerHTML = "<span>🔍 OCR Parsing Image...</span>";
+      btn.disabled = true;
+
+      try {
+        const res = await fetch("/api/parse-image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            imageBase64: selectedImageBase64,
+            mimeType: selectedImageMime
+          })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        loadRecipeIntoView(data);
+      } catch (err) {
+        alert("Error analyzing image: " + err.message);
+      } finally {
+        btn.innerHTML = "<span>🔍 OCR & Extract Recipe</span>";
+        btn.disabled = false;
+      }
+    }
+
+    function loadRecipeIntoView(recipe) {
+      originalRecipe = JSON.parse(JSON.stringify(recipe));
+      activeRecipe = JSON.parse(JSON.stringify(recipe));
+      translationCache = {};
+      currentTranslationLang = null;
+      isViewingOriginal = true;
+
+      baseServings = recipe.servings || 4;
+      currentServingsCount = baseServings;
+      currentUnit = 'metric';
+      checkedIngredients.clear();
+      checkedInstructions.clear();
+      cookStepIndex = 0;
+      
+      document.getElementById("emptyState").classList.add("hidden");
+      document.getElementById("recipeCard").classList.remove("hidden");
+      
+      updateTranslationUI();
+      renderRecipe();
+    }
+
+    /* ==========================================================================
+       INTELLIGENT RECIPE TRANSLATION ENGINE
+       ========================================================================== */
+    async function handleTranslateRecipe() {
+      if (!originalRecipe) return;
+      const targetLang = document.getElementById("translationLangSelect").value;
+      setPreferredLanguage(targetLang);
+
+      // Check translation cache first
+      if (translationCache[targetLang]) {
+        activeRecipe = JSON.parse(JSON.stringify(translationCache[targetLang]));
+        currentTranslationLang = targetLang;
+        isViewingOriginal = false;
+        updateTranslationUI();
+        renderRecipe();
+        if (isCookModeActive) renderCookMode();
+        return;
+      }
+
+      const btn = document.getElementById("btnTranslate");
+      const statusEl = document.getElementById("translationStatus");
+      btn.innerHTML = "<span>⏳ Translating...</span>";
+      btn.disabled = true;
+      statusEl.innerText = `Translating culinary terms into ${targetLang}...`;
+
+      try {
+        const res = await fetch("/api/translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            recipe: originalRecipe,
+            targetLanguage: targetLang
+          })
+        });
+
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        translationCache[targetLang] = JSON.parse(JSON.stringify(data));
+        activeRecipe = data;
+        currentTranslationLang = targetLang;
+        isViewingOriginal = false;
+
+        updateTranslationUI();
+        renderRecipe();
+        if (isCookModeActive) renderCookMode();
+      } catch (err) {
+        alert("Translation failed: " + err.message);
+        statusEl.innerText = "Translation failed.";
+      } finally {
+        btn.innerHTML = "<span>Translate</span>";
+        btn.disabled = false;
+      }
+    }
+
+    function toggleOriginalView() {
+      if (!originalRecipe) return;
+
+      if (isViewingOriginal && currentTranslationLang && translationCache[currentTranslationLang]) {
+        // Switch back to translation
+        activeRecipe = JSON.parse(JSON.stringify(translationCache[currentTranslationLang]));
+        isViewingOriginal = false;
+      } else {
+        // Switch to original
+        activeRecipe = JSON.parse(JSON.stringify(originalRecipe));
+        isViewingOriginal = true;
+      }
+
+      updateTranslationUI();
+      renderRecipe();
+      if (isCookModeActive) renderCookMode();
+    }
+
+    function updateTranslationUI() {
+      const toggleBtn = document.getElementById("btnToggleOriginal");
+      const statusEl = document.getElementById("translationStatus");
+      if (!toggleBtn || !statusEl) return;
+
+      if (currentTranslationLang) {
+        toggleBtn.classList.remove("hidden");
+        if (isViewingOriginal) {
+          toggleBtn.innerText = `🌐 View ${currentTranslationLang}`;
+          statusEl.innerText = `Viewing Original (English)`;
+        } else {
+          toggleBtn.innerText = `🔙 Show Original`;
+          statusEl.innerText = `Translated into ${currentTranslationLang}`;
+        }
+      } else {
+        toggleBtn.classList.add("hidden");
+        statusEl.innerText = "";
+      }
+    }
+
+    /* ==========================================================================
+       CHECKLISTS & INGREDIENT SCALING
+       ========================================================================== */
+    function toggleIngredient(idx) {
+      if (checkedIngredients.has(idx)) {
+        checkedIngredients.delete(idx);
+      } else {
+        checkedIngredients.add(idx);
+      }
+      renderRecipe();
+      if (isCookModeActive) {
+        renderCookDrawer();
+      }
+    }
+
+    function toggleInstruction(idx) {
+      if (checkedInstructions.has(idx)) {
+        checkedInstructions.delete(idx);
+      } else {
+        checkedInstructions.add(idx);
+      }
+      renderRecipe();
+      if (isCookModeActive) {
+        renderCookMode();
+      }
+    }
+
+    function resetProgress() {
+      checkedIngredients.clear();
+      checkedInstructions.clear();
+      renderRecipe();
+      if (isCookModeActive) {
+        renderCookMode();
+        renderCookDrawer();
+      }
+    }
+
+    function getScaledIngredientDisplay(item) {
+      const scaleRatio = currentServingsCount / (baseServings || 1);
+      let qty = item.quantity ? (item.quantity * scaleRatio) : null;
+      let unit = item.unit || "";
+
+      if (qty !== null && unit) {
+        const lowerUnit = unit.toLowerCase();
+        if (currentUnit === 'imperial') {
+          if (lowerUnit === 'g' || lowerUnit === 'grams') {
+            qty = (qty * CONVERSIONS.g_to_oz).toFixed(1);
+            unit = 'oz';
+          } else if (lowerUnit === 'ml' || lowerUnit === 'milliliters') {
+            qty = (qty * CONVERSIONS.ml_to_floz).toFixed(1);
+            unit = 'fl oz';
+          }
+        } else if (currentUnit === 'metric') {
+          if (lowerUnit === 'oz' || lowerUnit === 'ounces') {
+            qty = Math.round(qty * CONVERSIONS.oz_to_g);
+            unit = 'g';
+          } else if (lowerUnit === 'fl oz' || lowerUnit === 'fluid ounces') {
+            qty = Math.round(qty * CONVERSIONS.floz_to_ml);
+            unit = 'ml';
+          }
+        }
+      }
+
+      if (qty !== null && !isNaN(qty) && Number.isFinite(Number(qty))) {
+        if (typeof qty === 'number') {
+          qty = Number(qty.toFixed(2));
+        }
+      }
+
+      return { qty, unit, name: item.name, substitutions: item.substitutions };
+    }
+
+    function renderRecipe() {
+      if (!activeRecipe) return;
+
+      document.getElementById("recipeTitle").innerText = activeRecipe.title;
+      document.getElementById("prepMeta").innerText = `Prep: ${activeRecipe.prepTimeMinutes || 0}m`;
+      document.getElementById("cookMeta").innerText = `Cook: ${activeRecipe.cookTimeMinutes || 0}m`;
+      document.getElementById("yieldMeta").innerText = `Yield: ${currentServingsCount} servings`;
+      document.getElementById("currentServings").innerText = currentServingsCount;
+
+      const saveLabel = document.getElementById("saveBtnLabel");
+      if (saveLabel) {
+        saveLabel.innerText = activeRecipe.id ? "Update in SQLite" : "Save to SQLite";
+      }
+
+      // Render Tags
+      const tagsContainer = document.getElementById("recipeTagsContainer");
+      if (tagsContainer) {
+        tagsContainer.innerHTML = "";
+        const tags = activeRecipe.tags || [];
+        if (tags.length) {
+          tags.forEach(t => {
+            const cleanTag = t.startsWith("#") ? t : `#${t}`;
+            const tagEl = document.createElement("span");
+            tagEl.className = "px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 border border-amber-500/30 text-amber-300 flex items-center gap-1";
+            tagEl.innerText = cleanTag;
+            tagsContainer.appendChild(tagEl);
+          });
+        }
+      }
+
+      // Render Photo Section
+      const photoPreview = document.getElementById("recipePhotoPreviewContainer");
+      const photoAdd = document.getElementById("recipePhotoAddContainer");
+      const photoImg = document.getElementById("recipePhotoImg");
+      if (activeRecipe.imageAttachment) {
+        photoImg.src = activeRecipe.imageAttachment;
+        photoPreview.classList.remove("hidden");
+        photoAdd.classList.add("hidden");
+      } else {
+        photoPreview.classList.add("hidden");
+        photoAdd.classList.remove("hidden");
+      }
+
+      const totalIng = activeRecipe.ingredients?.length || 0;
+      const checkedIngCount = checkedIngredients.size;
+      const ingSummary = document.getElementById("ingProgressSummary");
+      if (ingSummary) {
+        ingSummary.innerText = totalIng ? `${checkedIngCount}/${totalIng} prepped` : "";
+      }
+
+      const ingList = document.getElementById("ingredientsList");
+      ingList.innerHTML = "";
+      (activeRecipe.ingredients || []).forEach((item, idx) => {
+        const { qty, unit, name, substitutions } = getScaledIngredientDisplay(item);
+        const isChecked = checkedIngredients.has(idx);
+
+        const qtyDisplay = qty !== null ? `<strong>${qty} ${unit}</strong>` : '';
+        const subsDisplay = substitutions && substitutions.length 
+          ? `<span class="block text-xs text-amber-300/80 mt-0.5">Alt: ${substitutions.join(', ')}</span>` 
+          : '';
+
+        const li = document.createElement("li");
+        li.className = `p-3 rounded-lg border transition cursor-pointer flex items-start gap-3 select-none ${
+          isChecked 
+            ? "bg-slate-900/30 border-slate-800 text-slate-500 line-through" 
+            : "bg-slate-900/60 border-slate-800/80 text-slate-200 hover:border-amber-500/50 hover:bg-slate-900/90"
+        }`;
+        li.onclick = () => toggleIngredient(idx);
+
+        const checkIcon = isChecked
+          ? `<div class="mt-0.5 w-5 h-5 rounded flex items-center justify-center bg-amber-500/20 text-amber-400 border border-amber-500/40 text-xs font-bold shrink-0">✓</div>`
+          : `<div class="mt-0.5 w-5 h-5 rounded border border-slate-600 bg-slate-800/80 shrink-0"></div>`;
+
+        li.innerHTML = `
+          ${checkIcon}
+          <div class="flex-1">
+            <div>${qtyDisplay} ${name}</div>
+            ${subsDisplay}
+          </div>
+        `;
+        ingList.appendChild(li);
+      });
+
+      const totalInst = activeRecipe.instructions?.length || 0;
+      const checkedInstCount = checkedInstructions.size;
+      const instSummary = document.getElementById("instProgressSummary");
+      if (instSummary) {
+        instSummary.innerText = totalInst ? `${checkedInstCount}/${totalInst} completed` : "";
+      }
+
+      const instList = document.getElementById("instructionsList");
+      instList.innerHTML = "";
+      (activeRecipe.instructions || []).forEach((step, idx) => {
+        const isChecked = checkedInstructions.has(idx);
+
+        const li = document.createElement("li");
+        li.className = `p-3 rounded-lg border transition cursor-pointer flex items-start gap-3 select-none ${
+          isChecked 
+            ? "bg-slate-900/30 border-slate-800 text-slate-500 line-through" 
+            : "bg-slate-900/60 border-slate-800/80 text-slate-200 hover:border-amber-500/50 hover:bg-slate-900/90"
+        }`;
+        li.onclick = () => toggleInstruction(idx);
+
+        const stepBadge = isChecked
+          ? `<div class="mt-0.5 w-6 h-6 rounded-full flex items-center justify-center bg-amber-500/20 text-amber-400 border border-amber-500/40 text-xs font-bold shrink-0">✓</div>`
+          : `<div class="mt-0.5 w-6 h-6 rounded-full flex items-center justify-center bg-slate-800 text-slate-400 border border-slate-700 text-xs font-bold shrink-0">${idx + 1}</div>`;
+
+        li.innerHTML = `
+          ${stepBadge}
+          <div class="flex-1 leading-relaxed">${step}</div>
+        `;
+        instList.appendChild(li);
+      });
+    }
+
+    function scaleServings(delta) {
+      if (currentServingsCount + delta >= 1) {
+        currentServingsCount += delta;
+        renderRecipe();
+        if (isCookModeActive) {
+          renderCookDrawer();
+        }
+      }
+    }
+
+    function setUnitSystem(system) {
+      currentUnit = system;
+      const btnMetric = document.getElementById("btnMetric");
+      const btnImperial = document.getElementById("btnImperial");
+      if (system === 'metric') {
+        btnMetric.className = "px-3 py-1.5 rounded-md bg-amber-500 text-slate-950 font-bold";
+        btnImperial.className = "px-3 py-1.5 rounded-md text-slate-400 hover:text-white";
+      } else {
+        btnImperial.className = "px-3 py-1.5 rounded-md bg-amber-500 text-slate-950 font-bold";
+        btnMetric.className = "px-3 py-1.5 rounded-md text-slate-400 hover:text-white";
+      }
+      renderRecipe();
+      if (isCookModeActive) {
+        renderCookDrawer();
+      }
+    }
+
+    /* ==========================================================================
+       SCREEN WAKE LOCK API (navigator.wakeLock)
+       ========================================================================== */
+    async function requestWakeLock() {
+      wakeLockRequested = true;
+      if ('wakeLock' in navigator) {
+        try {
+          wakeLock = await navigator.wakeLock.request('screen');
+          wakeLock.addEventListener('release', () => {
+            if (isCookModeActive && wakeLockRequested) {
+              updateWakeLockUI(false, "Lock released");
+            } else {
+              updateWakeLockUI(false);
+            }
+          });
+          updateWakeLockUI(true);
+        } catch (err) {
+          console.warn("Screen Wake Lock error:", err);
+          updateWakeLockUI(false, err.name || "WakeLock unavailable");
+        }
+      } else {
+        updateWakeLockUI(false, "Unsupported in browser");
+      }
+    }
+
+    async function releaseWakeLock() {
+      wakeLockRequested = false;
+      if (wakeLock !== null) {
+        try {
+          await wakeLock.release();
+        } catch (err) {
+          console.warn("Error releasing wake lock:", err);
+        }
+        wakeLock = null;
+      }
+      updateWakeLockUI(false);
+    }
+
+    function toggleWakeLockManual() {
+      if (wakeLock) {
+        releaseWakeLock();
+      } else {
+        requestWakeLock();
+      }
+    }
+
+    function updateWakeLockUI(active, note) {
+      const dot = document.getElementById("wakeLockDot");
+      const label = document.getElementById("wakeLockLabel");
+      const status = document.getElementById("wakeLockStatus");
+      if (!dot || !label || !status) return;
+
+      if (active) {
+        dot.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
+        label.innerText = "Screen Awake";
+        status.className = "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 cursor-pointer";
+        status.title = "Screen Wake Lock is ON (Display will stay active). Click to toggle.";
+      } else {
+        dot.className = "w-2 h-2 rounded-full bg-slate-500";
+        label.innerText = note ? (note.includes("Unsupported") ? "WakeLock N/A" : "Screen Sleep Normal") : "Screen Awake Off";
+        status.className = "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-800 border border-slate-700 text-slate-400 cursor-pointer";
+        status.title = (note || "Screen Wake Lock is inactive") + ". Click to attempt enabling.";
+      }
+    }
+
+    document.addEventListener('visibilitychange', async () => {
+      if (isCookModeActive && wakeLockRequested && document.visibilityState === 'visible') {
+        await requestWakeLock();
+      }
+    });
+
+    /* ==========================================================================
+       COOK MODE (Full-screen, Step Navigation, Timers, Drawer)
+       ========================================================================== */
+    function enterCookMode() {
+      if (!activeRecipe || !activeRecipe.instructions || !activeRecipe.instructions.length) {
+        return alert("No instructions found in recipe!");
+      }
+
+      isCookModeActive = true;
+      const overlay = document.getElementById("cookModeOverlay");
+      overlay.classList.remove("hidden");
+
+      // Auto-advance to first uncompleted step or start at 0
+      const firstUnchecked = activeRecipe.instructions.findIndex((_, i) => !checkedInstructions.has(i));
+      cookStepIndex = firstUnchecked !== -1 ? firstUnchecked : 0;
+
+      requestWakeLock();
+      renderCookMode();
+      renderCookDrawer();
+
+      window.addEventListener("keydown", handleCookKeyDown);
+    }
+
+    function exitCookMode() {
+      isCookModeActive = false;
+      const overlay = document.getElementById("cookModeOverlay");
+      overlay.classList.add("hidden");
+
+      closeCookIngredientsDrawer();
+      releaseWakeLock();
+
+      if (document.fullscreenElement) {
+        try { document.exitFullscreen(); } catch (e) {}
+      }
+
+      window.removeEventListener("keydown", handleCookKeyDown);
+      renderRecipe();
+    }
+
+    function toggleFullscreen() {
+      const icon = document.getElementById("fullscreenIcon");
+      if (!document.fullscreenElement) {
+        const elem = document.documentElement;
+        if (elem.requestFullscreen) {
+          elem.requestFullscreen().then(() => {
+            if (icon) icon.innerText = "🗗";
+          }).catch(err => {
+            console.log("Fullscreen request declined or unsupported:", err);
+          });
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().then(() => {
+            if (icon) icon.innerText = "⛶";
+          }).catch(err => console.log(err));
+        }
+      }
+    }
+
+    document.addEventListener("fullscreenchange", () => {
+      const icon = document.getElementById("fullscreenIcon");
+      if (icon) {
+        icon.innerText = document.fullscreenElement ? "🗗" : "⛶";
+      }
+    });
+
+    function handleCookKeyDown(e) {
+      if (!isCookModeActive) return;
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        nextCookStep();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prevCookStep();
+      } else if (e.key === ' ' || e.code === 'Space') {
+        e.preventDefault();
+        toggleCookCurrentStepCheck();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        const drawer = document.getElementById("cookIngredientsDrawer");
+        if (drawer && !drawer.classList.contains("translate-x-full")) {
+          closeCookIngredientsDrawer();
+        } else {
+          exitCookMode();
+        }
+      } else if (e.key === 'i' || e.key === 'I') {
+        e.preventDefault();
+        toggleCookIngredientsDrawer();
+      }
+    }
+
+    function nextCookStep() {
+      if (!activeRecipe || !activeRecipe.instructions) return;
+      if (cookStepIndex < activeRecipe.instructions.length - 1) {
+        checkedInstructions.add(cookStepIndex);
+        cookStepIndex++;
+        renderCookMode();
+      } else {
+        checkedInstructions.add(cookStepIndex);
+        renderCookMode();
+        alert("🎉 Congratulations! You have completed all steps in this recipe.");
+      }
+    }
+
+    function prevCookStep() {
+      if (cookStepIndex > 0) {
+        cookStepIndex--;
+        renderCookMode();
+      }
+    }
+
+    function toggleCookCurrentStepCheck() {
+      if (checkedInstructions.has(cookStepIndex)) {
+        checkedInstructions.delete(cookStepIndex);
+      } else {
+        checkedInstructions.add(cookStepIndex);
+      }
+      renderCookMode();
+    }
+
+    function renderCookMode() {
+      if (!activeRecipe || !activeRecipe.instructions) return;
+      const totalSteps = activeRecipe.instructions.length;
+      const currentStepText = activeRecipe.instructions[cookStepIndex] || "";
+      const isCurrentDone = checkedInstructions.has(cookStepIndex);
+
+      // Header info
+      document.getElementById("cookRecipeTitle").innerText = activeRecipe.title;
+      document.getElementById("cookStepBadge").innerText = `Step ${cookStepIndex + 1} of ${totalSteps}`;
+      document.getElementById("cookTimeMeta").innerText = `Prep: ${activeRecipe.prepTimeMinutes || 0}m • Cook: ${activeRecipe.cookTimeMinutes || 0}m`;
+
+      // Progress bar
+      const progressPercent = Math.round(((cookStepIndex + 1) / totalSteps) * 100);
+      document.getElementById("cookProgressBar").style.width = `${progressPercent}%`;
+
+      // Step text and pill
+      document.getElementById("cookStepPill").innerText = `Step ${cookStepIndex + 1} of ${totalSteps}`;
+      const stepContentEl = document.getElementById("cookStepContent");
+      stepContentEl.innerText = currentStepText;
+      if (isCurrentDone) {
+        stepContentEl.className = "text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-medium text-slate-400 line-through leading-relaxed sm:leading-snug md:leading-normal min-h-[120px] flex items-center justify-center transition-all px-2 opacity-60";
+      } else {
+        stepContentEl.className = "text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold text-slate-100 leading-relaxed sm:leading-snug md:leading-normal min-h-[120px] flex items-center justify-center transition-all px-2";
+      }
+
+      // Step Check Button (Huge tap target)
+      const checkBtn = document.getElementById("cookStepCheckBtn");
+      const checkIcon = document.getElementById("cookStepCheckIcon");
+      const checkText = document.getElementById("cookStepCheckText");
+      if (isCurrentDone) {
+        checkBtn.className = "px-6 py-3.5 rounded-xl border text-sm md:text-base font-semibold flex items-center gap-3 transition cursor-pointer shadow-md bg-amber-500/10 border-amber-500/40 text-amber-400";
+        checkIcon.className = "w-6 h-6 rounded flex items-center justify-center border border-amber-500/50 bg-amber-500/20 text-amber-400 text-sm font-bold";
+        checkIcon.innerText = "✓";
+        checkText.innerText = "Step Completed (Tap to Undo)";
+      } else {
+        checkBtn.className = "px-6 py-3.5 rounded-xl border text-sm md:text-base font-semibold flex items-center gap-3 transition cursor-pointer shadow-md bg-slate-900 border-slate-700 hover:border-amber-500 text-slate-200";
+        checkIcon.className = "w-6 h-6 rounded flex items-center justify-center border border-slate-600 bg-slate-800 text-xs";
+        checkIcon.innerText = "";
+        checkText.innerText = "Mark Step as Completed";
+      }
+
+      // Prev / Next Buttons
+      const prevBtn = document.getElementById("cookPrevBtn");
+      const nextBtn = document.getElementById("cookNextBtn");
+      const nextBtnText = document.getElementById("cookNextBtnText");
+
+      prevBtn.disabled = cookStepIndex === 0;
+      if (cookStepIndex === totalSteps - 1) {
+        nextBtnText.innerText = "Finish Cooking 🎉";
+        nextBtn.className = "flex-1 max-w-[240px] h-14 md:h-16 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold rounded-2xl text-base md:text-lg flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-500/20";
+      } else {
+        nextBtnText.innerText = "Next Step";
+        nextBtn.className = "flex-1 max-w-[240px] h-14 md:h-16 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold rounded-2xl text-base md:text-lg flex items-center justify-center gap-2 transition shadow-lg shadow-amber-500/10";
+      }
+
+      // In-line Timers Detection for current step
+      renderDetectedTimers(currentStepText);
+
+      // Update Ingredients count badge
+      const totalIng = activeRecipe.ingredients?.length || 0;
+      const checkedIng = checkedIngredients.size;
+      const ingBadge = document.getElementById("cookIngProgressBadge");
+      if (ingBadge) {
+        ingBadge.innerText = `${checkedIng}/${totalIng}`;
+      }
+    }
+
+    /* ==========================================================================
+       IN-LINE KITCHEN TIMERS ENGINE
+       ========================================================================== */
+    function detectTimeExpressions(text) {
+      const timers = [];
+      const regex = /(\b\d+(?:-\d+)?(?:\.\d+)?)\s*(minutes?|mins?|min|hours?|hrs?|hour|hr|seconds?|secs?|sec)\b/gi;
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        const rawAmount = match[1];
+        const unit = match[2].toLowerCase();
+        
+        let amount = 0;
+        if (rawAmount.includes("-")) {
+          const parts = rawAmount.split("-").map(Number);
+          amount = parts[1] || parts[0];
+        } else {
+          amount = parseFloat(rawAmount);
+        }
+
+        let seconds = 0;
+        if (unit.startsWith("h")) {
+          seconds = Math.round(amount * 3600);
+        } else if (unit.startsWith("m")) {
+          seconds = Math.round(amount * 60);
+        } else if (unit.startsWith("s")) {
+          seconds = Math.round(amount);
+        }
+
+        if (seconds > 0) {
+          timers.push({
+            id: `timer_${cookStepIndex}_${seconds}_${match.index}`,
+            label: `${rawAmount} ${unit}`,
+            totalSeconds: seconds
+          });
+        }
+      }
+      return timers;
+    }
+
+    function renderDetectedTimers(stepText) {
+      const container = document.getElementById("cookTimersContainer");
+      container.innerHTML = "";
+      const detected = detectTimeExpressions(stepText);
+      if (!detected.length) return;
+
+      detected.forEach(t => {
+        if (!activeTimers[t.id]) {
+          activeTimers[t.id] = {
+            remainingSeconds: t.totalSeconds,
+            totalSeconds: t.totalSeconds,
+            isRunning: false,
+            interval: null,
+            label: t.label
+          };
+        }
+
+        const timerBtn = document.createElement("div");
+        timerBtn.id = `timerWidget_${t.id}`;
+        container.appendChild(timerBtn);
+        updateTimerWidgetUI(timerBtn, t.id);
+      });
+    }
+
+    function formatTime(seconds) {
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return `${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    function updateTimerWidgetUI(el, timerId) {
+      const t = activeTimers[timerId];
+      if (!t || !el) return;
+
+      const isDone = t.remainingSeconds <= 0;
+      const timeStr = formatTime(t.remainingSeconds);
+
+      if (isDone) {
+        el.className = "flex items-center gap-3 px-4 py-2 bg-emerald-600/30 border border-emerald-500 text-emerald-300 rounded-xl shadow-lg animate-pulse";
+        el.innerHTML = `
+          <span class="font-bold text-sm">🔔 ${t.label} (Done!)</span>
+          <button onclick="resetKitchenTimer('${timerId}')" class="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-lg text-xs font-bold">Reset</button>
+        `;
+        return;
+      }
+
+      el.className = `flex items-center gap-3 px-4 py-2 rounded-xl border shadow-lg ${
+        t.isRunning 
+          ? "bg-amber-500/10 border-amber-500/40 text-amber-400" 
+          : "bg-slate-900 border-slate-700 text-slate-200"
+      }`;
+
+      el.innerHTML = `
+        <div class="flex items-center gap-2">
+          <span class="text-sm">⏱️</span>
+          <span class="font-mono text-base font-bold">${timeStr}</span>
+          <span class="text-xs text-slate-400">(${t.label})</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button onclick="toggleKitchenTimer('${timerId}')" class="px-2.5 py-1 ${
+            t.isRunning ? "bg-amber-500 text-slate-950" : "bg-slate-800 text-slate-200 hover:bg-slate-700"
+          } rounded-lg text-xs font-bold transition">
+            ${t.isRunning ? "Pause" : "Start"}
+          </button>
+          <button onclick="resetKitchenTimer('${timerId}')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-lg text-xs transition">
+            ↺
+          </button>
+        </div>
+      `;
+    }
+
+    function toggleKitchenTimer(timerId) {
+      const t = activeTimers[timerId];
+      if (!t) return;
+
+      if (t.isRunning) {
+        clearInterval(t.interval);
+        t.isRunning = false;
+        t.interval = null;
+      } else {
+        t.isRunning = true;
+        t.interval = setInterval(() => {
+          if (t.remainingSeconds > 0) {
+            t.remainingSeconds--;
+            const el = document.getElementById(`timerWidget_${timerId}`);
+            if (el) updateTimerWidgetUI(el, timerId);
+            if (t.remainingSeconds <= 0) {
+              clearInterval(t.interval);
+              t.isRunning = false;
+              t.interval = null;
+              playKitchenChime();
+              if (el) updateTimerWidgetUI(el, timerId);
+            }
+          }
+        }, 1000);
+      }
+
+      const el = document.getElementById(`timerWidget_${timerId}`);
+      if (el) updateTimerWidgetUI(el, timerId);
+    }
+
+    function resetKitchenTimer(timerId) {
+      const t = activeTimers[timerId];
+      if (!t) return;
+      if (t.interval) clearInterval(t.interval);
+      t.remainingSeconds = t.totalSeconds;
+      t.isRunning = false;
+      t.interval = null;
+      const el = document.getElementById(`timerWidget_${timerId}`);
+      if (el) updateTimerWidgetUI(el, timerId);
+    }
+
+    function playKitchenChime() {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const notes = [523.25, 659.25, 783.99, 1046.5];
+        notes.forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+          const startTime = ctx.currentTime + i * 0.14;
+          gain.gain.setValueAtTime(0.2, startTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.35);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(startTime);
+          osc.stop(startTime + 0.35);
+        });
+      } catch (e) {
+        console.log("Web Audio chime failed or restricted:", e);
+      }
+    }
+
+    /* ==========================================================================
+       COOK MODE INGREDIENTS DRAWER
+       ========================================================================== */
+    function toggleCookIngredientsDrawer() {
+      const drawer = document.getElementById("cookIngredientsDrawer");
+      if (!drawer) return;
+      const isClosed = drawer.classList.contains("translate-x-full");
+      if (isClosed) {
+        drawer.classList.remove("translate-x-full");
+        renderCookDrawer();
+      } else {
+        drawer.classList.add("translate-x-full");
+      }
+    }
+
+    function closeCookIngredientsDrawer() {
+      const drawer = document.getElementById("cookIngredientsDrawer");
+      if (drawer) drawer.classList.add("translate-x-full");
+    }
+
+    function renderCookDrawer() {
+      if (!activeRecipe) return;
+      document.getElementById("drawerServings").innerText = currentServingsCount;
+      document.getElementById("drawerUnits").innerText = currentUnit;
+
+      const list = document.getElementById("cookDrawerIngredientsList");
+      list.innerHTML = "";
+
+      (activeRecipe.ingredients || []).forEach((item, idx) => {
+        const { qty, unit, name, substitutions } = getScaledIngredientDisplay(item);
+        const isChecked = checkedIngredients.has(idx);
+
+        const qtyDisplay = qty !== null ? `<strong>${qty} ${unit}</strong>` : '';
+        const subsDisplay = substitutions && substitutions.length 
+          ? `<span class="block text-[11px] text-amber-300/80 mt-0.5">Alt: ${substitutions.join(', ')}</span>` 
+          : '';
+
+        const itemEl = document.createElement("div");
+        itemEl.className = `p-3 rounded-lg border transition cursor-pointer flex items-start gap-3 select-none ${
+          isChecked 
+            ? "bg-slate-950/40 border-slate-800 text-slate-500 line-through" 
+            : "bg-slate-800/80 border-slate-700 text-slate-200 hover:border-amber-500"
+        }`;
+        itemEl.onclick = () => {
+          toggleIngredient(idx);
+          renderCookDrawer();
+          const totalIng = activeRecipe.ingredients?.length || 0;
+          const ingBadge = document.getElementById("cookIngProgressBadge");
+          if (ingBadge) ingBadge.innerText = `${checkedIngredients.size}/${totalIng}`;
+        };
+
+        const checkIcon = isChecked
+          ? `<div class="mt-0.5 w-5 h-5 rounded flex items-center justify-center bg-amber-500/20 text-amber-400 border border-amber-500/40 text-xs font-bold shrink-0">✓</div>`
+          : `<div class="mt-0.5 w-5 h-5 rounded border border-slate-600 bg-slate-900 shrink-0"></div>`;
+
+        itemEl.innerHTML = `
+          ${checkIcon}
+          <div class="flex-1 text-sm">
+            <div>${qtyDisplay} ${name}</div>
+            ${subsDisplay}
+          </div>
+        `;
+        list.appendChild(itemEl);
+      });
+    }
+
+    /* ==========================================================================
+       STORAGE, TAGS & SQLite PERSISTENCE
+       ========================================================================== */
+    function getStoredRecipes() {
+      return JSON.parse(localStorage.getItem("recipe_deck_items") || "[]");
+    }
+
+    async function fetchSavedRecipes() {
+      try {
+        const res = await fetch("/api/recipes");
+        if (res.ok) {
+          const data = await res.json();
+          cachedSavedRecipes = data;
+          localStorage.setItem("recipe_deck_items", JSON.stringify(data));
+          return data;
+        }
+      } catch (e) {
+        console.warn("Using local cached recipes:", e);
+      }
+      cachedSavedRecipes = getStoredRecipes();
+      return cachedSavedRecipes;
+    }
+
+    async function saveCurrentRecipe() {
+      if (!activeRecipe) return;
+      // When saving, persist base record with original title/ingredients
+      const recipeToSave = originalRecipe || activeRecipe;
+      if (activeRecipe.imageAttachment) {
+        recipeToSave.imageAttachment = activeRecipe.imageAttachment;
+      }
+
+      try {
+        let savedRecipe;
+        if (recipeToSave.id) {
+          const res = await fetch(`/api/recipes/${recipeToSave.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(recipeToSave)
+          });
+          if (!res.ok) throw new Error("Failed to update recipe in SQLite");
+          savedRecipe = await res.json();
+        } else {
+          const res = await fetch("/api/recipes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(recipeToSave)
+          });
+          if (!res.ok) throw new Error("Failed to save recipe to SQLite");
+          savedRecipe = await res.json();
+          recipeToSave.id = savedRecipe.id;
+          activeRecipe.id = savedRecipe.id;
+        }
+        await updateSavedUI();
+        renderRecipe();
+        alert("🎉 Recipe successfully saved to SQLite database!");
+      } catch (err) {
+        console.warn("Backend save failed, using local storage fallback:", err);
+        const recipes = JSON.parse(localStorage.getItem("recipe_deck_items") || "[]");
+        const existingIdx = recipes.findIndex(r => r.id === recipeToSave.id);
+        if (existingIdx >= 0) {
+          recipes[existingIdx] = { ...recipeToSave };
+        } else {
+          recipeToSave.id = recipeToSave.id || Date.now();
+          activeRecipe.id = recipeToSave.id;
+          recipes.unshift({ ...recipeToSave });
+        }
+        localStorage.setItem("recipe_deck_items", JSON.stringify(recipes));
+        cachedSavedRecipes = recipes;
+        await updateSavedUI();
+        renderRecipe();
+        alert("Recipe saved locally!");
+      }
+    }
+
+    async function loadSavedRecipe(id) {
+      try {
+        const res = await fetch(`/api/recipes/${id}`);
+        if (res.ok) {
+          const data = await res.json();
+          loadRecipeIntoView(data);
+          return;
+        }
+      } catch (e) {
+        console.warn("Server fetch failed, loading from local cache:", e);
+      }
+      const recipes = getStoredRecipes();
+      const match = recipes.find(r => r.id === id);
+      if (match) loadRecipeIntoView(match);
+    }
+
+    async function deleteRecipe(id, event) {
+      event.stopPropagation();
+      if (!confirm("Are you sure you want to delete this recipe?")) return;
+      try {
+        await fetch(`/api/recipes/${id}`, { method: "DELETE" });
+      } catch (e) {
+        console.warn("Server delete failed:", e);
+      }
+      let recipes = getStoredRecipes().filter(r => r.id !== id);
+      localStorage.setItem("recipe_deck_items", JSON.stringify(recipes));
+      cachedSavedRecipes = recipes;
+      if (activeRecipe && activeRecipe.id === id) {
+        closeActiveRecipe();
+      }
+      await updateSavedUI();
+    }
+
+    /* ==========================================================================
+       SIDEBAR SEARCH & TAG FILTERING
+       ========================================================================== */
+    function filterSavedRecipes() {
+      const searchInput = document.getElementById("sidebarSearchInput");
+      const query = (searchInput && typeof searchInput.value === 'string' ? searchInput.value : "").trim().toLowerCase();
+      const listEl = document.getElementById("recipeList");
+
+      let filtered = cachedSavedRecipes || [];
+
+      // Filter by active tag pill
+      if (activeTagFilter !== "All") {
+        const targetTag = activeTagFilter.toLowerCase().replace(/^#/, "");
+        filtered = filtered.filter(r => {
+          const tags = (r.tags || []).map(t => t.toLowerCase().replace(/^#/, ""));
+          return tags.some(t => t.includes(targetTag) || targetTag.includes(t));
+        });
+      }
+
+      // Filter by search query (title, tags, ingredients)
+      if (query) {
+        filtered = filtered.filter(r => {
+          const titleMatch = (r.title || "").toLowerCase().includes(query);
+          const tagMatch = (r.tags || []).some(t => t.toLowerCase().includes(query));
+          const ingMatch = (r.ingredients || []).some(i => (i.name || "").toLowerCase().includes(query));
+          return titleMatch || tagMatch || ingMatch;
+        });
+      }
+
+      renderSavedRecipeList(filtered);
+    }
+
+    function selectTagFilter(tag) {
+      activeTagFilter = tag;
+      renderTagFilterPills();
+      filterSavedRecipes();
+    }
+
+    function renderTagFilterPills() {
+      const bar = document.getElementById("tagFilterBar");
+      if (!bar) return;
+
+      // Extract all unique tags across saved recipes
+      const tagCountMap = {};
+      (cachedSavedRecipes || []).forEach(r => {
+        (r.tags || []).forEach(t => {
+          const clean = t.startsWith("#") ? t : `#${t}`;
+          tagCountMap[clean] = (tagCountMap[clean] || 0) + 1;
+        });
+      });
+
+      const uniqueTags = Object.keys(tagCountMap).sort((a, b) => tagCountMap[b] - tagCountMap[a]);
+      const filterPills = ["All", ...uniqueTags];
+
+      bar.innerHTML = filterPills.map(tag => {
+        const isActive = activeTagFilter === tag;
+        const count = tag === "All" ? cachedSavedRecipes.length : tagCountMap[tag];
+        const activeClass = isActive 
+          ? "bg-amber-500 text-slate-950 font-bold shadow" 
+          : "bg-slate-900 border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600";
+
+        return `
+          <button onclick="selectTagFilter('${tag}')" class="px-2.5 py-1 rounded-lg text-xs whitespace-nowrap transition flex items-center gap-1 ${activeClass}">
+            <span>${tag}</span>
+            <span class="text-[10px] opacity-75">(${count})</span>
+          </button>
+        `;
+      }).join("");
+    }
+
+    function renderSavedRecipeList(recipes) {
+      const listEl = document.getElementById("recipeList");
+      if (!listEl) return;
+
+      if (!recipes.length) {
+        listEl.innerHTML = '<p class="text-slate-500 text-xs py-2">No matching recipes found.</p>';
+        return;
+      }
+
+      listEl.innerHTML = recipes.map(r => {
+        const thumb = r.imageAttachment 
+          ? `<img src="${r.imageAttachment}" class="w-10 h-10 rounded-lg object-cover bg-slate-950 border border-slate-700 shrink-0" alt="">`
+          : `<div class="w-10 h-10 rounded-lg bg-slate-950 border border-slate-700 flex items-center justify-center text-slate-500 text-base shrink-0">📖</div>`;
+
+        const tagBadges = (r.tags || []).slice(0, 2).map(t => {
+          const clean = t.startsWith("#") ? t : `#${t}`;
+          return `<span class="px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-300/90 text-[10px]">${clean}</span>`;
+        }).join(" ");
+
+        return `
+          <div onclick="loadSavedRecipe(${r.id})" class="flex items-center gap-3 p-2 bg-slate-900/80 hover:bg-slate-700/60 rounded-xl cursor-pointer border border-slate-800 transition group">
+            ${thumb}
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-slate-200 truncate text-sm">${r.title}</div>
+              <div class="text-[11px] text-slate-400 flex items-center gap-2 flex-wrap">
+                <span>${r.servings || 4} serv</span>
+                <span>•</span>
+                <span>${(r.prepTimeMinutes || 0) + (r.cookTimeMinutes || 0)}m</span>
+                ${tagBadges}
+              </div>
+            </div>
+            <button onclick="deleteRecipe(${r.id}, event)" class="p-1 text-slate-500 hover:text-rose-400 text-xs transition" title="Delete recipe">✕</button>
+          </div>
+        `;
+      }).join("");
+    }
+
+    async function updateSavedUI() {
+      const recipes = await fetchSavedRecipes();
+      document.getElementById("savedCount").innerText = recipes.length;
+      renderTagFilterPills();
+      filterSavedRecipes();
+    }
+
+    // Startup Initialization
+    initLanguageSelector();
+    updateSavedUI();
+  </script>
+</body>
+</html>
