@@ -8,7 +8,7 @@
   <!-- PWA Metadata & Manifest -->
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#f59e0b">
-  <meta name="description" content="Turn any recipe, URL, or photo into clean steps, change serving sizes, and cook step-by-step offline.">
+  <meta name="description" content="Turn any recipe, website link, or photo into clean steps, change serving sizes, and cook step-by-step offline.">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
 
   <!-- Tailwind CSS CDN & App Custom Styles -->
@@ -29,6 +29,16 @@
       </div>
 
       <div class="flex items-center gap-3 flex-wrap">
+        <!-- PWA Install App Button -->
+        <button id="pwaInstallBtn" onclick="window.promptPwaInstall()" class="hidden px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow">
+          <span>📲</span> <span>Install App</span>
+        </button>
+
+        <!-- Help Modal Trigger -->
+        <button id="helpModalBtn" onclick="document.getElementById('helpModal').classList.remove('hidden')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow">
+          <span>❓</span> <span id="helpBtnLabel">Help</span>
+        </button>
+
         <!-- Site Language Selector -->
         <div id="siteLanguageContainer" class="flex items-center bg-slate-800/90 border border-slate-700 rounded-lg px-2.5 py-1.5 shadow-sm" title="Choose language">
           <span class="text-xs text-slate-400 mr-1.5">🌐</span>
@@ -70,30 +80,49 @@
 
   <!-- Main Application Container -->
   <main class="flex-1 max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-6">
-    <!-- Sidebar: Recipe Library & Filters -->
+    <!-- Sidebar: Recipe Library & Ingestion -->
     <aside id="sidebar" class="lg:col-span-4 flex flex-col gap-4 no-print">
-      <!-- Ingestion Card -->
+      <!-- 3-Tab Ingestion Panel -->
       <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-md">
-        <h2 class="text-sm font-bold text-amber-400 mb-3 flex items-center gap-1.5">
-          <span>⚡</span> Quick Recipe Ingestion
-        </h2>
-        <div class="flex flex-col gap-3">
-          <textarea id="rawTextInput" placeholder="Paste recipe text here..." class="w-full h-24 p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-amber-400 resize-none"></textarea>
-          <button id="parseTextBtn" onclick="window.handleParseText()" class="w-full py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs transition cursor-pointer shadow">
-            Import Text
-          </button>
-          
-          <div class="relative my-1 flex items-center justify-center">
-            <div class="border-t border-slate-800 w-full"></div>
-            <span class="bg-slate-900 px-2 text-[10px] text-slate-500 uppercase font-bold absolute">OR URL</span>
-          </div>
+        <!-- Ingestion Tabs Header -->
+        <div class="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 mb-3 text-[11px] font-bold">
+          <button id="tabTextBtn" onclick="window.switchTab('text')" class="flex-1 py-1.5 rounded-lg bg-amber-500 text-slate-950 shadow transition cursor-pointer text-center">📝 Text</button>
+          <button id="tabUrlBtn" onclick="window.switchTab('url')" class="flex-1 py-1.5 rounded-lg text-slate-400 hover:text-white transition cursor-pointer text-center">🔗 Web URL</button>
+          <button id="tabImageBtn" onclick="window.switchTab('image')" class="flex-1 py-1.5 rounded-lg text-slate-400 hover:text-white transition cursor-pointer text-center">📸 Photo OCR</button>
+        </div>
 
-          <div class="flex gap-2">
-            <input type="url" id="urlInput" placeholder="https://foodblog.com/recipe" class="flex-1 px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-amber-400">
-            <button id="scrapeUrlBtn" onclick="window.handleScrapeUrl()" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition cursor-pointer shadow">
-              Scrape
-            </button>
+        <!-- Tab 1: Text / Caption -->
+        <div id="tabTextPanel" class="flex flex-col gap-2">
+          <div class="relative">
+            <textarea id="rawTextInput" placeholder="Paste recipe text, Instagram caption, or ingredients list..." class="w-full h-28 p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-amber-400 resize-none"></textarea>
+            <button onclick="window.pasteFromClipboard('rawTextInput')" class="absolute top-2 right-2 px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] font-semibold">📋 Paste</button>
           </div>
+          <button id="parseTextBtn" onclick="window.handleParseText()" class="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs transition cursor-pointer shadow">
+            Import Text Recipe
+          </button>
+        </div>
+
+        <!-- Tab 2: Web URL -->
+        <div id="tabUrlPanel" class="hidden flex-col gap-2">
+          <div class="relative">
+            <input type="url" id="urlInput" placeholder="https://www.allrecipes.com/recipe/..." class="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-amber-400 pr-16">
+            <button onclick="window.pasteFromClipboard('urlInput')" class="absolute top-1.5 right-2 px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] font-semibold">📋 Paste</button>
+          </div>
+          <button id="scrapeUrlBtn" onclick="window.handleScrapeUrl()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition cursor-pointer shadow">
+            Extract Web Recipe
+          </button>
+        </div>
+
+        <!-- Tab 3: Photo OCR -->
+        <div id="tabImagePanel" class="hidden flex-col gap-2">
+          <input type="file" id="imageFileInput" accept="image/*" class="hidden" onchange="window.handleImageSelected(event)">
+          <div id="imageDropZone" onclick="document.getElementById('imageFileInput').click()" class="p-4 border-2 border-dashed border-slate-800 hover:border-amber-400/50 rounded-xl text-center cursor-pointer transition">
+            <span class="text-xl">📷</span>
+            <p id="imageDropPromptText" class="text-xs text-slate-400 mt-1">Click or drag recipe screenshot / cookbook photo here</p>
+          </div>
+          <button id="parseImageBtn" onclick="window.handleParseImage()" class="w-full py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-xl text-xs transition cursor-pointer shadow">
+            Extract Recipe from Photo
+          </button>
         </div>
       </div>
 
@@ -101,12 +130,17 @@
       <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-md flex-1 flex flex-col gap-3">
         <div class="flex items-center justify-between gap-2">
           <h2 class="text-sm font-bold text-slate-200">📚 Recipe Library</h2>
-          <input type="text" id="searchInput" placeholder="Search..." class="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-amber-400 max-w-[140px]">
+          <div class="flex items-center gap-1.5">
+            <button id="favouritesFilterBtn" onclick="window.toggleFavouritesFilter()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-amber-400 rounded-lg text-xs font-bold transition cursor-pointer" title="Toggle favourites filter">
+              ⭐ Favourites
+            </button>
+            <input type="text" id="searchInput" placeholder="Search..." class="px-3 py-1 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-amber-400 max-w-[110px]">
+          </div>
         </div>
 
         <div id="tagFilterContainer" class="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto py-1"></div>
 
-        <div id="savedList" class="flex flex-col gap-2 overflow-y-auto max-h-[500px] pr-1 flex-1"></div>
+        <div id="savedList" class="flex flex-col gap-2 overflow-y-auto max-h-[480px] pr-1 flex-1"></div>
       </div>
     </aside>
 
@@ -121,6 +155,15 @@
 
       <!-- Active Recipe Card -->
       <div id="recipeCard" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative">
+        <!-- Newly Scraped Keep / Discard Banner -->
+        <div id="newRecipeConfirmBanner" class="hidden mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center justify-between flex-wrap gap-2">
+          <span id="confirmKeepPromptText" class="text-xs text-amber-300 font-semibold">✨ Newly imported recipe — Keep in collection?</span>
+          <div class="flex items-center gap-2">
+            <button id="confirmKeepBtn" onclick="window.saveCurrentRecipe()" class="px-3 py-1 bg-emerald-600 text-white rounded-lg text-xs font-bold">Keep Recipe</button>
+            <button id="confirmDiscardBtn" onclick="window.deleteActiveRecipe()" class="px-3 py-1 bg-rose-600/30 text-rose-200 border border-rose-500/40 rounded-lg text-xs font-semibold">Discard</button>
+          </div>
+        </div>
+
         <!-- Toolbar Header -->
         <div class="flex flex-wrap justify-between items-center gap-3 pb-4 mb-4 border-b border-slate-800 no-print">
           <div class="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-semibold">
@@ -141,6 +184,9 @@
             </button>
             <button id="favouriteBtn" onclick="window.toggleFavourite()" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer">
               <span id="favouriteIcon">☆</span>
+            </button>
+            <button onclick="window.openShareModal()" class="px-3 py-1.5 bg-sky-600/80 hover:bg-sky-500 text-white rounded-xl text-xs font-semibold transition cursor-pointer shadow">
+              📤 Share
             </button>
             <button onclick="window.saveCurrentRecipe()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow">
               💾 <span id="saveBtnLabel">Save Recipe</span>
@@ -166,12 +212,17 @@
 
         <!-- Photo Dropzone / Image Attachment -->
         <div id="recipePhotoSection" class="mb-6">
-          <div id="recipePhotoDropZone" class="p-6 border-2 border-dashed border-slate-800 rounded-2xl text-center cursor-pointer hover:border-amber-400/50 transition">
+          <input type="file" id="recipePhotoFileInput" accept="image/*" class="hidden" onchange="window.handleRecipePhotoSelected(event)">
+          <div id="recipePhotoDropZone" onclick="document.getElementById('recipePhotoFileInput').click()" class="p-6 border-2 border-dashed border-slate-800 rounded-2xl text-center cursor-pointer hover:border-amber-400/50 transition">
             <span class="text-2xl">📸</span>
-            <p class="text-xs text-slate-400 mt-1">Click to attach or drag-and-drop a photo</p>
+            <p id="recipePhotoDropPromptText" class="text-xs text-slate-400 mt-1">Click or drag-and-drop a photo to attach to recipe</p>
           </div>
-          <div id="recipePhotoContainer" class="hidden relative max-h-72 rounded-2xl overflow-hidden border border-slate-800">
+          <div id="recipePhotoContainer" class="hidden relative max-h-72 rounded-2xl overflow-hidden border border-slate-800 group">
             <img id="recipePhotoImg" class="w-full h-full object-cover">
+            <div class="absolute bottom-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition">
+              <button id="changePhotoBtn" onclick="document.getElementById('recipePhotoFileInput').click()" class="px-2.5 py-1 bg-slate-900/90 hover:bg-slate-800 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700">Change Photo</button>
+              <button id="removePhotoBtn" onclick="window.removeRecipePhoto()" class="px-2.5 py-1 bg-rose-600/90 hover:bg-rose-500 text-white text-xs font-semibold rounded-lg">Remove Photo</button>
+            </div>
           </div>
         </div>
 
@@ -341,6 +392,59 @@
         <h4 class="font-bold text-xs text-amber-400 mb-3">User Role Management 👑</h4>
         <div id="adminUserListContainer" class="flex flex-col gap-2 max-h-60 overflow-y-auto"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- Share Recipe Modal -->
+  <div id="shareModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl relative">
+      <button onclick="document.getElementById('shareModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
+      <h3 class="text-lg font-bold text-amber-400 mb-2">Share Recipe</h3>
+      <p class="text-xs text-slate-400 mb-4">Share this recipe with family, friends, or socials.</p>
+      
+      <div class="flex flex-col gap-3">
+        <button onclick="window.copyShareableLink()" class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition flex items-center justify-center gap-2">
+          <span>🔗</span> <span>Copy Direct Link</span>
+        </button>
+        <button onclick="window.copyFormattedText()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs transition flex items-center justify-center gap-2">
+          <span>📋</span> <span>Copy Formatted Recipe Text</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Help & User Guide Modal -->
+  <div id="helpModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-xl w-full shadow-2xl relative max-h-[85vh] overflow-y-auto">
+      <button onclick="document.getElementById('helpModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
+      <h3 id="helpModalTitle" class="text-lg font-bold text-amber-400 mb-1">How to Use Recipe Deck</h3>
+      <p id="helpModalSubtitle" class="text-xs text-slate-400 mb-4">Simple guide to importing, scaling, converting, and cooking recipes.</p>
+      
+      <div class="space-y-4 text-xs text-slate-300">
+        <div>
+          <h4 id="helpSec1Title" class="font-bold text-amber-300 mb-1">1. Importing Recipes</h4>
+          <p id="helpSec1Body">You can add recipes in three easy ways using the left sidebar tabs:</p>
+          <ul class="list-disc list-inside mt-1 space-y-1 text-slate-400">
+            <li id="helpSec1Point1"><strong>Text:</strong> Paste raw recipe text or captions.</li>
+            <li id="helpSec1Point2"><strong>Web URL:</strong> Enter food blog links to scrape ingredients & steps automatically.</li>
+            <li id="helpSec1Point3"><strong>Photo:</strong> Upload cookbook photos or screenshots for AI OCR extraction.</li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 id="helpSec2Title" class="font-bold text-amber-300 mb-1">2. Scaling Portions & Unit Conversion</h4>
+          <p>Use the top toolbar buttons to scale servings up or down (+/-) or switch between Metric (grams/milliliters) and Imperial (ounces/cups) measurements instantly.</p>
+        </div>
+
+        <div>
+          <h4 id="helpSec3Title" class="font-bold text-amber-300 mb-1">3. Cook Mode & Kitchen Timers</h4>
+          <p>Click <strong>🍳 Cook Mode</strong> for a big-screen step runner with Screen Wake Lock. Click inline timer buttons (e.g. ⏱️ 15 mins) to start kitchen countdown chimes!</p>
+        </div>
+      </div>
+
+      <button onclick="document.getElementById('helpModal').classList.add('hidden')" id="helpModalCloseBtn" class="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs transition mt-6">
+        Got It!
+      </button>
     </div>
   </div>
 

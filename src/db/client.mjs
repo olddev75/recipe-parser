@@ -24,10 +24,23 @@ let isLocalFallback = false;
 export function getDbClient() {
   if (dbInstance) return dbInstance;
 
-  // Default to local SQLite file for rock-solid stability
-  console.log(`[Database] Initializing local SQLite database persistence at ${config.localDbPath}`);
-  dbInstance = createClient({ url: `file:${config.localDbPath}` });
-  isLocalFallback = true;
+  if (config.tursoDatabaseUrl && config.tursoAuthToken) {
+    try {
+      dbInstance = createClient({
+        url: config.tursoDatabaseUrl,
+        authToken: config.tursoAuthToken
+      });
+      console.log(`[Database] Initializing connection to remote Turso Cloud (${config.tursoDatabaseUrl})`);
+    } catch (err) {
+      console.warn(`[Database] Turso initialization notice (${err.message}). Using local SQLite.`);
+      dbInstance = createClient({ url: `file:${config.localDbPath}` });
+      isLocalFallback = true;
+    }
+  } else {
+    console.log(`[Database] No remote Turso URL provided. Using local SQLite at ${config.localDbPath}`);
+    dbInstance = createClient({ url: `file:${config.localDbPath}` });
+    isLocalFallback = true;
+  }
 
   return dbInstance;
 }
