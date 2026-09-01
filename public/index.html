@@ -5928,18 +5928,22 @@ function sanitizeAndExtractIngredient(ing) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(recipeToSave)
           });
-          if (!res.ok) throw new Error("Failed to update recipe in SQLite");
+          if (!res.ok) throw new Error("Failed to update recipe in database");
           savedRecipe = await res.json();
+          const finalRecord = savedRecipe.recipe || savedRecipe;
+          activeRecipe = { ...activeRecipe, ...finalRecord };
+          originalRecipe = JSON.parse(JSON.stringify(activeRecipe));
         } else {
           const res = await fetch("/api/recipes", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(recipeToSave)
           });
-          if (!res.ok) throw new Error("Failed to save recipe to SQLite");
+          if (!res.ok) throw new Error("Failed to save recipe to database");
           savedRecipe = await res.json();
-          recipeToSave.id = savedRecipe.id;
-          activeRecipe.id = savedRecipe.id;
+          const finalRecord = savedRecipe.recipe || savedRecipe;
+          activeRecipe.id = finalRecord.id;
+          if (originalRecipe) originalRecipe.id = finalRecord.id;
         }
         await updateSavedUI();
         renderRecipe();
