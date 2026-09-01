@@ -60,6 +60,27 @@ function requireAuth(req, res, next) {
   }
 }
 
+// Admin middleware requiring admin role (isAdmin === 1)
+async function requireAdmin(req, res, next) {
+  try {
+    const token = req.cookies?.[COOKIE_NAME] || (req.headers.authorization?.startsWith("Bearer ") ? req.headers.authorization.slice(7) : null);
+    if (!token) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    
+    // Check DB for current isAdmin status
+    const dbUser = await dbGet("SELECT id, isAdmin FROM users WHERE id = ?", [decoded.id]);
+    if (!dbUser || !dbUser.isAdmin) {
+      return res.status(403).json({ error: "Forbidden: Administrator privileges required" });
+    }
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: "Invalid or expired session" });
+  }
+}
+
 app.use(optionalAuth);
 
 const standardUnitMap = {
@@ -252,6 +273,7 @@ async function initDb() {
       displayName TEXT NOT NULL,
       bio TEXT,
       avatar TEXT,
+      isAdmin INTEGER DEFAULT 0,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
@@ -303,6 +325,7 @@ async function initDb() {
     const userCols = userTableInfo.rows.map(r => r.name);
     if (!userCols.includes("bio")) await db.execute("ALTER TABLE users ADD COLUMN bio TEXT;");
     if (!userCols.includes("avatar")) await db.execute("ALTER TABLE users ADD COLUMN avatar TEXT;");
+    if (!userCols.includes("isAdmin")) await db.execute("ALTER TABLE users ADD COLUMN isAdmin INTEGER DEFAULT 0;");
   } catch (e) {}
 
   // Seed default starter recipes if database is fresh/empty
@@ -1157,15 +1180,16 @@ app.get("/api/auth/me", async (req, res) => {
     return res.json({ user: null });
   }
   try {
-    const user = await dbGet("SELECT id, email, displayName, bio, avatar, createdAt FROM users WHERE id = ?", [req.user.id]);
+    const user = await dbGet("SELECT id, email, displayName, bio, avatar, isAdmin, createdAt FROM users WHERE id = ?", [req.user.id]);
     if (!user) return res.json({ user: null });
-    res.json({ user });
+    res.json({ user: { ...user, isAdmin: Boolean(user.isAdmin) } });
   } catch (err) {
     res.json({
       user: {
         id: req.user.id,
         email: req.user.email,
-        displayName: req.user.displayName
+        displayName: req.user.displayName,
+        isAdmin: false
       }
     });
   }
@@ -1232,6 +1256,43 @@ app.put("/api/auth/password", requireAuth, async (req, res) => {
   } catch (err) {
     console.error("Change password error:", err);
     res.status(500).json({ error: "Failed to change password" });
+  }
+});
+
+// GET /api/admin/users — List all registered users (Admin Only)
+app.get("/api/admin/users", requireAdmin, async (req, res) => {
+  try {
+    const users = await dbAll("SELECT id, email, displayName, bio, avatar, isAdmin, createdAt FROM users ORDER BY createdAt ASC");
+    const formatted = (users || []).map(u => ({ ...u, isAdmin: Boolean(u.isAdmin) }));
+    res.json({ users: formatted });
+  } catch (err) {
+    console.error("Fetch admin users error:", err);
+    res.status(500).json({ error: "Failed to fetch user list" });
+  }
+});
+
+// PUT /api/admin/users/:id/role — Toggle or grant/revoke admin rights (Admin Only)
+app.put("/api/admin/users/:id/role", requireAdmin, async (req, res) => {
+  try {
+    const { targetUserId } = { targetUserId: req.params.id };
+    const { isAdmin } = req.body || {};
+
+    const targetUser = await dbGet("SELECT id, email, displayName, isAdmin FROM users WHERE id = ?", [targetUserId]);
+    if (!targetUser) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const newAdminStatus = isAdmin ? 1 : 0;
+    await dbRun("UPDATE users SET isAdmin = ? WHERE id = ?", [newAdminStatus, targetUserId]);
+
+    res.json({
+      success: true,
+      message: `Updated ${targetUser.displayName} admin privileges`,
+      user: { ...targetUser, isAdmin: Boolean(newAdminStatus) }
+    });
+  } catch (err) {
+    console.error("Update user admin role error:", err);
+    res.status(500).json({ error: "Failed to update user admin privileges" });
   }
 });
 
@@ -1404,11 +1465,12 @@ app.post("/api/recipes", requireAuth, async (req, res) => {
   }
 });
 
-// Helper for recipe authorization: allow if no owner (legacy/starter) OR user matches
+// Helper for recipe authorization: allow if admin, no owner (legacy/starter), OR user matches owner
 function checkRecipeOwnership(recipe, user) {
-  if (!recipe.userId) return true; // Legacy/starter recipes can be edited by any user
-  if (!user || user.id !== recipe.userId) return false;
-  return true;
+  if (!user) return false;
+  if (user.isAdmin) return true; // Admins can manage any recipe
+  if (!recipe.userId) return true; // Legacy/starter recipes can be edited by users
+  return user.id === recipe.userId;
 }
 
 // Update full recipe by ID
@@ -1765,8 +1827,8 @@ app.delete("/api/comments/:commentId", requireAuth, async (req, res) => {
       return res.status(404).json({ error: "Comment not found" });
     }
 
-    if (existing.userId !== req.user.id) {
-      return res.status(403).json({ error: "Forbidden: You can only delete your own comments" });
+    if (existing.userId !== req.user.id && !req.user.isAdmin) {
+      return res.status(403).json({ error: "Forbidden: You can only delete your own comments unless you are an admin" });
     }
 
     await dbRun("DELETE FROM recipe_comments WHERE id = ?", req.params.commentId);

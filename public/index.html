@@ -951,10 +951,11 @@
         <button onclick="closeProfileModal()" class="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 text-xs cursor-pointer transition">✕</button>
       </div>
 
-      <!-- Modal Tabs: Profile Info vs Change Password -->
+      <!-- Modal Tabs: Profile Info vs Change Password vs User Management (Admin Only) -->
       <div class="flex border-b border-slate-800 text-xs font-semibold bg-slate-950/40">
         <button id="profileTabInfoBtn" onclick="switchProfileTab('info')" class="flex-1 py-2.5 border-b-2 border-amber-500 text-amber-400 font-bold cursor-pointer text-center">Profile Information</button>
         <button id="profileTabPasswordBtn" onclick="switchProfileTab('password')" class="flex-1 py-2.5 text-slate-400 hover:text-white cursor-pointer text-center">Change Password</button>
+        <button id="profileTabAdminBtn" onclick="switchProfileTab('admin')" class="hidden flex-1 py-2.5 text-slate-400 hover:text-white cursor-pointer text-center">User Roles 👑</button>
       </div>
 
       <div class="p-5 overflow-y-auto space-y-4 text-xs">
@@ -1025,6 +1026,18 @@
             Update Password
           </button>
         </form>
+
+        <!-- Admin User Management Panel -->
+        <div id="profileAdminPanel" class="hidden space-y-3">
+          <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+            <h3 class="font-bold text-slate-200 text-xs">Registered Accounts</h3>
+            <span class="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded border border-amber-500/30">Administrator</span>
+          </div>
+          <div id="adminUserList" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+            <p class="text-slate-400 text-center py-4">Loading user list...</p>
+          </div>
+          <div id="adminPanelMsg" class="hidden p-2 rounded-lg text-[11px]"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -3058,11 +3071,14 @@
 
       const headerIcon = document.getElementById("userHeaderAvatarIcon");
       const headerImg = document.getElementById("userHeaderAvatarImg");
+      const adminTabBtn = document.getElementById("profileTabAdminBtn");
 
       if (currentUser) {
         if (loginBtn) loginBtn.classList.add("hidden");
         if (userBadge) userBadge.classList.remove("hidden");
-        if (displayNameLabel) displayNameLabel.innerText = currentUser.displayName || currentUser.email;
+        if (displayNameLabel) {
+          displayNameLabel.innerText = (currentUser.displayName || currentUser.email) + (currentUser.isAdmin ? " 👑" : "");
+        }
 
         if (currentUser.avatar && headerImg && headerIcon) {
           headerImg.src = currentUser.avatar;
@@ -3073,11 +3089,18 @@
           headerIcon.classList.remove("hidden");
         }
 
+        if (currentUser.isAdmin && adminTabBtn) {
+          adminTabBtn.classList.remove("hidden");
+        } else if (adminTabBtn) {
+          adminTabBtn.classList.add("hidden");
+        }
+
         if (commentForm) commentForm.classList.remove("hidden");
         if (commentPrompt) commentPrompt.classList.add("hidden");
       } else {
         if (loginBtn) loginBtn.classList.remove("hidden");
         if (userBadge) userBadge.classList.add("hidden");
+        if (adminTabBtn) adminTabBtn.classList.add("hidden");
         if (commentForm) commentForm.classList.add("hidden");
         if (commentPrompt) commentPrompt.classList.remove("hidden");
       }
@@ -3246,19 +3269,110 @@
     function switchProfileTab(tab) {
       const infoTabBtn = document.getElementById("profileTabInfoBtn");
       const passTabBtn = document.getElementById("profileTabPasswordBtn");
+      const adminTabBtn = document.getElementById("profileTabAdminBtn");
+
       const infoForm = document.getElementById("profileInfoForm");
       const passForm = document.getElementById("profilePasswordForm");
+      const adminPanel = document.getElementById("profileAdminPanel");
+
+      const inactiveClass = "flex-1 py-2.5 text-slate-400 hover:text-white cursor-pointer text-center";
+      const activeClass = "flex-1 py-2.5 border-b-2 border-amber-500 text-amber-400 font-bold cursor-pointer text-center";
+
+      if (infoTabBtn) infoTabBtn.className = inactiveClass;
+      if (passTabBtn) passTabBtn.className = inactiveClass;
+      if (adminTabBtn) adminTabBtn.className = inactiveClass;
+
+      if (infoForm) infoForm.classList.add("hidden");
+      if (passForm) passForm.classList.add("hidden");
+      if (adminPanel) adminPanel.classList.add("hidden");
 
       if (tab === 'password') {
-        if (infoTabBtn) infoTabBtn.className = "flex-1 py-2.5 text-slate-400 hover:text-white cursor-pointer text-center";
-        if (passTabBtn) passTabBtn.className = "flex-1 py-2.5 border-b-2 border-amber-500 text-amber-400 font-bold cursor-pointer text-center";
-        if (infoForm) infoForm.classList.add("hidden");
+        if (passTabBtn) passTabBtn.className = activeClass;
         if (passForm) passForm.classList.remove("hidden");
+      } else if (tab === 'admin') {
+        if (adminTabBtn) adminTabBtn.className = activeClass;
+        if (adminPanel) adminPanel.classList.remove("hidden");
+        fetchAdminUserList();
       } else {
-        if (infoTabBtn) infoTabBtn.className = "flex-1 py-2.5 border-b-2 border-amber-500 text-amber-400 font-bold cursor-pointer text-center";
-        if (passTabBtn) passTabBtn.className = "flex-1 py-2.5 text-slate-400 hover:text-white cursor-pointer text-center";
+        if (infoTabBtn) infoTabBtn.className = activeClass;
         if (infoForm) infoForm.classList.remove("hidden");
-        if (passForm) passForm.classList.add("hidden");
+      }
+    }
+
+    async function fetchAdminUserList() {
+      const listEl = document.getElementById("adminUserList");
+      if (!listEl) return;
+      listEl.innerHTML = `<p class="text-slate-400 text-center py-4">Loading accounts...</p>`;
+      try {
+        const res = await fetch("/api/admin/users");
+        if (!res.ok) throw new Error("Failed to fetch accounts");
+        const data = await res.json();
+        renderAdminUserList(data.users || []);
+      } catch (err) {
+        listEl.innerHTML = `<p class="text-rose-400 text-center py-2 text-xs">${err.message}</p>`;
+      }
+    }
+
+    function renderAdminUserList(users) {
+      const listEl = document.getElementById("adminUserList");
+      if (!listEl) return;
+      if (!users.length) {
+        listEl.innerHTML = `<p class="text-slate-400 text-center py-4">No users found.</p>`;
+        return;
+      }
+
+      listEl.innerHTML = users.map(u => {
+        const isSelf = currentUser && currentUser.id === u.id;
+        return `
+          <div class="flex items-center justify-between p-2.5 bg-slate-950/60 border border-slate-800 rounded-xl">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <div class="w-7 h-7 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center overflow-hidden shrink-0">
+                ${u.avatar ? `<img src="${u.avatar}" class="w-full h-full object-cover">` : `<span class="text-xs text-amber-400">👤</span>`}
+              </div>
+              <div class="min-w-0">
+                <div class="font-semibold text-slate-200 truncate flex items-center gap-1.5">
+                  <span>${u.displayName || u.email}</span>
+                  ${u.isAdmin ? `<span class="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded border border-amber-500/30">Admin 👑</span>` : `<span class="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.2 rounded">User</span>`}
+                </div>
+                <div class="text-[10px] text-slate-400 truncate">${u.email}</div>
+              </div>
+            </div>
+            <div>
+              ${isSelf ? `<span class="text-[10px] text-slate-500 italic px-2">You</span>` : `
+                <button onclick="toggleUserAdminRole('${u.id}', ${!u.isAdmin})" class="px-2.5 py-1 text-[11px] font-bold rounded-lg transition cursor-pointer ${u.isAdmin ? 'bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/60' : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40'}">
+                  ${u.isAdmin ? 'Revoke Admin' : 'Make Admin 👑'}
+                </button>
+              `}
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    async function toggleUserAdminRole(targetUserId, makeAdmin) {
+      const msgEl = document.getElementById("adminPanelMsg");
+      if (msgEl) msgEl.classList.add("hidden");
+      try {
+        const res = await fetch(`/api/admin/users/${targetUserId}/role`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isAdmin: makeAdmin })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to update role");
+        
+        if (msgEl) {
+          msgEl.innerText = data.message || "User role updated";
+          msgEl.className = "p-2 rounded-lg text-[11px] bg-emerald-950/60 border border-emerald-700/60 text-emerald-300";
+          msgEl.classList.remove("hidden");
+        }
+        await fetchAdminUserList();
+      } catch (err) {
+        if (msgEl) {
+          msgEl.innerText = err.message;
+          msgEl.className = "p-2 rounded-lg text-[11px] bg-rose-950/60 border border-rose-700/60 text-rose-300";
+          msgEl.classList.remove("hidden");
+        }
       }
     }
 
