@@ -210,6 +210,10 @@
                 <span>💾</span>
                 <span id="saveBtnLabel">Save Recipe</span>
               </button>
+              <button onclick="openShareModal()" id="shareBtn" class="px-3 py-1.5 bg-sky-600/80 hover:bg-sky-500 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer shadow" title="Share this recipe via link, email, or socials">
+                <span>📤</span>
+                <span id="shareBtnLabel">Share</span>
+              </button>
               <button onclick="window.print()" id="printBtn" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-semibold transition cursor-pointer" title="Print this recipe or save as a PDF">
                 <span>🖨️</span>
                 <span id="printBtnLabel">Print</span>
@@ -331,6 +335,107 @@
       </div>
     </div>
   </div>
+  <!-- Share Recipe Modal -->
+  <div id="shareModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm transition-all duration-200">
+    <div class="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <!-- Modal Header -->
+      <div class="px-5 py-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-800/60">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">📤</span>
+          <div>
+            <h2 id="shareModalTitle" class="text-sm font-bold text-white">Share Recipe</h2>
+            <p id="shareModalSubtitle" class="text-[11px] text-slate-400">Share with family, friends, and social media</p>
+          </div>
+        </div>
+        <button onclick="closeShareModal()" class="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 text-xs cursor-pointer transition">✕</button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-5 overflow-y-auto space-y-3.5">
+        <!-- Recipe Preview Card -->
+        <div class="p-2.5 bg-slate-800/60 rounded-xl border border-slate-700 flex items-center gap-3">
+          <div id="shareRecipeThumb" class="w-10 h-10 rounded-lg bg-slate-950 border border-slate-700 flex items-center justify-center text-lg shrink-0 overflow-hidden">📖</div>
+          <div class="min-w-0 flex-1">
+            <h4 id="shareRecipeTitle" class="text-xs font-bold text-slate-100 truncate">Recipe Title</h4>
+            <p id="shareRecipeMeta" class="text-[10px] text-slate-400">4 servings • 25m</p>
+          </div>
+        </div>
+
+        <!-- Copy Link Section -->
+        <div>
+          <label id="shareLinkLabel" class="block text-[11px] font-semibold text-slate-300 mb-1">🔗 Shareable Link</label>
+          <div class="flex items-center gap-2">
+            <input id="shareLinkInput" type="text" readonly class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 font-mono focus:outline-none select-all truncate" title="Shareable Link">
+            <button id="copyShareLinkBtn" onclick="copyShareLink()" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1 transition cursor-pointer shrink-0 shadow" title="Copy link to clipboard">
+              <span>📋</span>
+              <span id="copyShareLinkBtnLabel">Copy Link</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Copy Full Formatted Recipe Text -->
+        <div>
+          <button id="copyRecipeTextBtn" onclick="copyFormattedRecipeText()" class="w-full py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition cursor-pointer shadow" title="Copy complete formatted ingredients and instructions as text">
+            <span>📝</span>
+            <span id="copyRecipeTextBtnLabel">📋 Copy Full Recipe Text</span>
+          </button>
+        </div>
+
+        <!-- Native Device Share (Shown if supported) -->
+        <div id="nativeShareContainer" class="hidden">
+          <button id="nativeShareBtn" onclick="handleNativeShare()" class="w-full py-2 px-3 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer shadow" title="Open native device share menu">
+            <span>📱</span>
+            <span id="nativeShareBtnLabel">📱 More Apps & Devices</span>
+          </button>
+        </div>
+
+        <!-- Social Channels Grid -->
+        <div>
+          <label id="socialShareLabel" class="block text-[11px] font-semibold text-slate-300 mb-1.5">🌐 Social Media & Messaging</label>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <!-- WhatsApp -->
+            <button onclick="shareToWhatsApp()" class="p-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer" title="Share on WhatsApp">
+              <span>💬</span>
+              <span>WhatsApp</span>
+            </button>
+            <!-- Email -->
+            <button onclick="shareToEmail()" class="p-2 bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border border-sky-500/40 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer" title="Email Recipe">
+              <span>✉️</span>
+              <span>Email</span>
+            </button>
+            <!-- Telegram -->
+            <button onclick="shareToTelegram()" class="p-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer" title="Share on Telegram">
+              <span>✈️</span>
+              <span>Telegram</span>
+            </button>
+            <!-- X / Twitter -->
+            <button onclick="shareToTwitter()" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer" title="Share on X / Twitter">
+              <span>𝕏</span>
+              <span>X (Twitter)</span>
+            </button>
+            <!-- Facebook -->
+            <button onclick="shareToFacebook()" class="p-2 bg-blue-700/20 hover:bg-blue-700/30 text-blue-300 border border-blue-600/40 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer" title="Share on Facebook">
+              <span>📘</span>
+              <span>Facebook</span>
+            </button>
+            <!-- Pinterest -->
+            <button onclick="shareToPinterest()" class="p-2 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer" title="Pin on Pinterest">
+              <span>📌</span>
+              <span>Pinterest</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-5 py-2.5 border-t border-slate-800 flex justify-end bg-slate-800/40">
+        <button onclick="closeShareModal()" class="px-3.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs transition cursor-pointer">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
 
   <!-- Interactive Cook Mode Overlay -->
   <div id="cookModeOverlay" class="fixed inset-0 z-50 bg-slate-950 text-slate-100 flex flex-col justify-between hidden select-none">
@@ -573,6 +678,18 @@
        ========================================================================== */
     const I18N = {
       en: {
+        share: "Share",
+        shareModalTitle: "Share Recipe",
+        shareModalSubtitle: "Share this recipe with family, friends, and social media",
+        copyLink: "Copy Link",
+        linkCopied: "✅ Link copied to clipboard!",
+        copyRecipeText: "📋 Copy Full Recipe Text",
+        textCopied: "✅ Recipe text copied to clipboard!",
+        deviceShare: "📱 More Apps & Devices",
+        tipShare: "Share this recipe via link, email, or social media",
+        tipCopyLink: "Copy shareable link to this recipe",
+        tipCopyText: "Copy formatted recipe ingredients and instructions as text",
+
         bgScrapeStarted: "⏳ Scraping recipe in the background... It will appear in your collection automatically once ready!",
         bgScrapeSuccess: "🎉 Recipe scraped & saved: \"{title}\"!",
         bgScrapeFailed: "❌ Could not scrape recipe from link",
@@ -725,6 +842,18 @@
         tipDeleteRecipe: "Delete this recipe from your collection"
       },
       es: {
+        share: "Compartir",
+        shareModalTitle: "Compartir Receta",
+        shareModalSubtitle: "Comparte esta receta con amigos, familiares o en redes sociales",
+        copyLink: "Copiar Enlace",
+        linkCopied: "✅ ¡Enlace copiado al portapapeles!",
+        copyRecipeText: "📋 Copiar Texto Completo",
+        textCopied: "✅ ¡Texto de la receta copiado al portapapeles!",
+        deviceShare: "📱 Más Aplicaciones",
+        tipShare: "Comparte esta receta por enlace, correo o redes sociales",
+        tipCopyLink: "Copiar enlace para compartir esta receta",
+        tipCopyText: "Copiar ingredientes e instrucciones formateados como texto",
+
         bgScrapeStarted: "⏳ Extrayendo receta en segundo plano... ¡Aparecerá en tu colección cuando esté lista!",
         bgScrapeSuccess: "🎉 ¡Receta extraída y guardada: \"{title}\"!",
         bgScrapeFailed: "❌ No se pudo extraer la receta del enlace",
@@ -877,6 +1006,18 @@
         tipDeleteRecipe: "Eliminar esta receta de tu colección"
       },
       fr: {
+        share: "Partager",
+        shareModalTitle: "Partager la recette",
+        shareModalSubtitle: "Partagez cette recette avec vos proches et sur les réseaux",
+        copyLink: "Copier le lien",
+        linkCopied: "✅ Lien copié dans le presse-papiers !",
+        copyRecipeText: "📋 Copier tout le texte",
+        textCopied: "✅ Texte de la recette copié !",
+        deviceShare: "📱 Plus d'applications",
+        tipShare: "Partager cette recette par lien, e-mail ou réseaux sociaux",
+        tipCopyLink: "Copier le lien de cette recette",
+        tipCopyText: "Copier la recette formatée sous forme de texte",
+
         bgScrapeStarted: "⏳ Extraction de la recette en arrière-plan... Elle apparaîtra dans votre carnet dès qu'elle sera prête !",
         bgScrapeSuccess: "🎉 Recette importée et enregistrée : « {title} » !",
         bgScrapeFailed: "❌ Impossible d'importer la recette depuis ce lien",
@@ -1029,6 +1170,18 @@
         tipDeleteRecipe: "Supprimer cette recette du carnet"
       },
       de: {
+        share: "Teilen",
+        shareModalTitle: "Rezept teilen",
+        shareModalSubtitle: "Teile dieses Rezept mit Freunden, Familie oder in sozialen Medien",
+        copyLink: "Link kopieren",
+        linkCopied: "✅ Link in die Zwischenablage kopiert!",
+        copyRecipeText: "📋 Gesamten Rezepttext kopieren",
+        textCopied: "✅ Rezepttext in die Zwischenablage kopiert!",
+        deviceShare: "📱 Weitere Apps & Geräte",
+        tipShare: "Rezept per Link, E-Mail oder soziale Medien teilen",
+        tipCopyLink: "Freigabelink für dieses Rezept kopieren",
+        tipCopyText: "Rezeptzutaten und Zubereitung als formatierten Text kopieren",
+
         bgScrapeStarted: "⏳ Rezept wird im Hintergrund importiert... Es erscheint automatisch in deiner Sammlung!",
         bgScrapeSuccess: "🎉 Rezept erfolgreich importiert: „{title}“!",
         bgScrapeFailed: "❌ Rezept konnte nicht vom Link importiert werden",
@@ -1181,6 +1334,18 @@
         tipDeleteRecipe: "Dieses Rezept aus der Sammlung löschen"
       },
       it: {
+        share: "Condividi",
+        shareModalTitle: "Condividi Ricetta",
+        shareModalSubtitle: "Condividi questa ricetta con amici, familiari o sui social",
+        copyLink: "Copia Link",
+        linkCopied: "✅ Link copiato negli appunti!",
+        copyRecipeText: "📋 Copia Testo Completo",
+        textCopied: "✅ Testo della ricetta copiato negli appunti!",
+        deviceShare: "📱 Altre App e Dispositivi",
+        tipShare: "Condividi questa ricetta tramite link, email o social network",
+        tipCopyLink: "Copia il link condivisibile di questa ricetta",
+        tipCopyText: "Copia ingredienti e istruzioni formattati come testo",
+
         bgScrapeStarted: "⏳ Estrazione ricetta in background... Apparirà automaticamente nella tua raccolta!",
         bgScrapeSuccess: "🎉 Ricetta estratta e salvata: \"{title}\"!",
         bgScrapeFailed: "❌ Impossibile estrarre la ricetta dal link",
@@ -1333,6 +1498,18 @@
         tipDeleteRecipe: "Elimina questa ricetta dalla raccolta"
       },
       th: {
+        share: "แชร์",
+        shareModalTitle: "แชร์สูตรอาหาร",
+        shareModalSubtitle: "แชร์สูตรนี้กับครอบครัว เพื่อนๆ และโซเชียลมีเดีย",
+        copyLink: "คัดลอกลิงก์",
+        linkCopied: "✅ คัดลอกลิงก์ไปยังคลิปบอร์ดแล้ว!",
+        copyRecipeText: "📋 คัดลอกข้อความสูตรทั้งหมด",
+        textCopied: "✅ คัดลอกข้อความสูตรอาหารเรียบร้อยแล้ว!",
+        deviceShare: "📱 แอปและอุปกรณ์อื่นๆ",
+        tipShare: "แชร์สูตรอาหารนี้ผ่านลิงก์ อีเมล หรือโซเชียลมีเดีย",
+        tipCopyLink: "คัดลอกลิงก์สำหรับแชร์สูตรอาหารนี้",
+        tipCopyText: "คัดลอกรายการวัตถุดิบและวิธีทำเป็นข้อความ",
+
         bgScrapeStarted: "⏳ กำลังดึงสูตรอาหารในพื้นหลัง... สูตรจะปรากฏในคลังของคุณโดยอัตโนมัติเมื่อเสร็จสิ้น!",
         bgScrapeSuccess: "🎉 ดึงและบันทึกสูตรเรียบร้อยแล้ว: \"{title}\"!",
         bgScrapeFailed: "❌ ไม่สามารถดึงสูตรอาหารจากลิงก์ได้",
@@ -1485,6 +1662,18 @@
         tipDeleteRecipe: "ลบสูตรอาหารนี้ออกจากคลัง"
       },
       ja: {
+        share: "共有",
+        shareModalTitle: "レシピを共有",
+        shareModalSubtitle: "家族や友人、SNSでこのレシピを共有できます",
+        copyLink: "リンクをコピー",
+        linkCopied: "✅ リンクをクリップボードにコピーしました！",
+        copyRecipeText: "📋 レシピ全文をコピー",
+        textCopied: "✅ レシピのテキストをコピーしました！",
+        deviceShare: "📱 その他のアプリ・端末",
+        tipShare: "リンク、メール、SNSでこのレシピを共有",
+        tipCopyLink: "このレシピの共有リンクをコピー",
+        tipCopyText: "材料と手順を整形テキストとしてコピー",
+
         bgScrapeStarted: "⏳ バックグラウンドでレシピを取得中... 完了するとコレクションに自動で追加されます！",
         bgScrapeSuccess: "🎉 レシピの取得と保存が完了しました: 「{title}」！",
         bgScrapeFailed: "❌ URLからレシピを取得できませんでした",
@@ -1637,6 +1826,18 @@
         tipDeleteRecipe: "このレシピをコレクションから削除"
       },
       vi: {
+        share: "Chia sẻ",
+        shareModalTitle: "Chia sẻ công thức",
+        shareModalSubtitle: "Chia sẻ công thức này với bạn bè, gia đình và mạng xã hội",
+        copyLink: "Sao chép liên kết",
+        linkCopied: "✅ Đã sao chép liên kết vào bộ nhớ tạm!",
+        copyRecipeText: "📋 Sao chép toàn bộ văn bản",
+        textCopied: "✅ Đã sao chép nội dung công thức!",
+        deviceShare: "📱 Ứng dụng & Thiết bị khác",
+        tipShare: "Chia sẻ công thức qua liên kết, email hoặc mạng xã hội",
+        tipCopyLink: "Sao chép liên kết chia sẻ công thức",
+        tipCopyText: "Sao chép nguyên liệu và các bước nấu thành văn bản",
+
         bgScrapeStarted: "⏳ Đang trích xuất công thức ở chế độ nền... Công thức sẽ tự động xuất hiện trong bộ sưu tập khi hoàn tất!",
         bgScrapeSuccess: "🎉 Đã trích xuất và lưu công thức: \"{title}\"!",
         bgScrapeFailed: "❌ Không thể trích xuất công thức từ liên kết",
@@ -1789,6 +1990,18 @@
         tipDeleteRecipe: "Xóa công thức này khỏi bộ sưu tập"
       },
       zh: {
+        share: "分享",
+        shareModalTitle: "分享食谱",
+        shareModalSubtitle: "与家人、朋友或在社交媒体上分享此食谱",
+        copyLink: "复制链接",
+        linkCopied: "✅ 链接已复制到剪贴板！",
+        copyRecipeText: "📋 复制食谱全文",
+        textCopied: "✅ 食谱全文已复制到剪贴板！",
+        deviceShare: "📱 系统分享 / 更多应用",
+        tipShare: "通过链接、邮件或社交媒体分享此食谱",
+        tipCopyLink: "复制此食谱的专属分享链接",
+        tipCopyText: "复制包含食材与制作步骤的完整文本",
+
         bgScrapeStarted: "⏳ 正在后台智能抓取食谱... 完成后将自动保存并显示在您的收藏中！",
         bgScrapeSuccess: "🎉 食谱抓取并自动保存成功：\"{title}\"！",
         bgScrapeFailed: "❌ 无法从该链接抓取食谱",
@@ -1941,6 +2154,18 @@
         tipDeleteRecipe: "从收藏夹中删除此食谱"
       },
       pt: {
+        share: "Compartilhar",
+        shareModalTitle: "Compartilhar Receita",
+        shareModalSubtitle: "Compartilhe esta receita com amigos, familiares e redes sociais",
+        copyLink: "Copiar Link",
+        linkCopied: "✅ Link copiado para a área de transferência!",
+        copyRecipeText: "📋 Copiar Texto Completo",
+        textCopied: "✅ Texto da receita copiado!",
+        deviceShare: "📱 Mais Aplicativos",
+        tipShare: "Compartilhar esta receita via link, e-mail ou redes sociais",
+        tipCopyLink: "Copiar link compartilhável desta receita",
+        tipCopyText: "Copiar ingredientes e modo de preparo formatados como texto",
+
         bgScrapeStarted: "⏳ Extraindo receita em segundo plano... Ela aparecerá na sua coleção assim que estiver pronta!",
         bgScrapeSuccess: "🎉 Receita extraída e salva: \"{title}\"!",
         bgScrapeFailed: "❌ Não foi possível extrair a receita do link",
@@ -2209,6 +2434,186 @@
           setTimeout(() => toast.remove(), 300);
         }
       }, timeoutMs);
+    }
+
+
+    // Encode recipe data into shareable base64 string
+    function encodeRecipePayload(recipe) {
+      try {
+        const clean = {
+          title: recipe.title,
+          servings: recipe.servings || 4,
+          prepTimeMinutes: recipe.prepTimeMinutes || 0,
+          cookTimeMinutes: recipe.cookTimeMinutes || 0,
+          rating: recipe.rating || 0,
+          difficulty: recipe.difficulty || "Easy",
+          tags: recipe.tags || [],
+          ingredients: recipe.ingredients || [],
+          instructions: recipe.instructions || []
+        };
+        return encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(clean)))));
+      } catch (e) {
+        return "";
+      }
+    }
+
+    function getShareUrl(recipe) {
+      if (!recipe) return window.location.href;
+      const base = window.location.origin + window.location.pathname;
+      if (recipe.id) {
+        return base + "?recipe=" + recipe.id;
+      }
+      const payload = encodeRecipePayload(recipe);
+      return payload ? base + "?data=" + payload : base;
+    }
+
+    function formatRecipePlainText(recipe) {
+      if (!recipe) return "";
+      const totalTime = (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
+      let text = "📖 " + (recipe.title || "Recipe") + "\n";
+      text += "⏱️ Prep: " + (recipe.prepTimeMinutes || 0) + "m | Cook: " + (recipe.cookTimeMinutes || 0) + "m | Servings: " + (currentServingsCount || recipe.servings || 4) + "\n\n";
+      
+      text += "🥕 " + t("ingredients") + ":\n";
+      const ingList = (recipe.ingredients || []).map(item => {
+        const scaled = scaleIngredient(item, baseServings, currentServingsCount, currentUnit);
+        return "• " + scaled.qty + " " + (scaled.unit ? scaled.unit + " " : "") + scaled.name;
+      });
+      text += ingList.join("\n") + "\n\n";
+
+      text += "👩‍🍳 " + t("instructions") + ":\n";
+      const instList = (recipe.instructions || []).map((step, idx) => (idx + 1) + ". " + step);
+      text += instList.join("\n") + "\n\n";
+
+      text += "Shared via Recipe Deck: " + getShareUrl(recipe);
+      return text;
+    }
+
+    function openShareModal() {
+      if (!activeRecipe) return;
+      const modal = document.getElementById("shareModal");
+      if (!modal) return;
+
+      const titleEl = document.getElementById("shareRecipeTitle");
+      if (titleEl) titleEl.innerText = activeRecipe.title || "Recipe";
+
+      const metaEl = document.getElementById("shareRecipeMeta");
+      if (metaEl) {
+        metaEl.innerText = (currentServingsCount || activeRecipe.servings || 4) + " " + t("servings") + " • " + ((activeRecipe.prepTimeMinutes || 0) + (activeRecipe.cookTimeMinutes || 0)) + "m";
+      }
+
+      const thumbEl = document.getElementById("shareRecipeThumb");
+      if (thumbEl) {
+        if (activeRecipe.imageAttachment) {
+          thumbEl.innerHTML = '<img src="' + activeRecipe.imageAttachment + '" class="w-full h-full object-cover" alt="">';
+        } else {
+          thumbEl.innerHTML = '📖';
+        }
+      }
+
+      const urlInput = document.getElementById("shareLinkInput");
+      if (urlInput) {
+        urlInput.value = getShareUrl(activeRecipe);
+      }
+
+      // Check native share support
+      const nativeContainer = document.getElementById("nativeShareContainer");
+      if (nativeContainer) {
+        if (navigator.share) {
+          nativeContainer.classList.remove("hidden");
+        } else {
+          nativeContainer.classList.add("hidden");
+        }
+      }
+
+      modal.classList.remove("hidden");
+    }
+
+    function closeShareModal() {
+      const modal = document.getElementById("shareModal");
+      if (modal) modal.classList.add("hidden");
+    }
+
+    async function copyShareLink() {
+      if (!activeRecipe) return;
+      const shareUrl = getShareUrl(activeRecipe);
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        showBackgroundNotification("info", t("linkCopied"));
+      } catch (err) {
+        const input = document.getElementById("shareLinkInput");
+        if (input) {
+          input.select();
+          document.execCommand("copy");
+          showBackgroundNotification("info", t("linkCopied"));
+        }
+      }
+    }
+
+    async function copyFormattedRecipeText() {
+      if (!activeRecipe) return;
+      const text = formatRecipePlainText(activeRecipe);
+      try {
+        await navigator.clipboard.writeText(text);
+        showBackgroundNotification("info", t("textCopied"));
+      } catch (err) {
+        console.warn("Clipboard copy failed:", err);
+      }
+    }
+
+    async function handleNativeShare() {
+      if (!activeRecipe || !navigator.share) return;
+      const shareUrl = getShareUrl(activeRecipe);
+      try {
+        await navigator.share({
+          title: activeRecipe.title,
+          text: "Check out this recipe for " + activeRecipe.title + " on Recipe Deck!",
+          url: shareUrl
+        });
+      } catch (err) {
+        if (err.name !== "AbortError") {
+          console.warn("Native share error:", err);
+        }
+      }
+    }
+
+    function shareToWhatsApp() {
+      if (!activeRecipe) return;
+      const shareUrl = getShareUrl(activeRecipe);
+      const summary = "🍳 *" + activeRecipe.title + "*\n" + shareUrl;
+      window.open("https://api.whatsapp.com/send?text=" + encodeURIComponent(summary), "_blank");
+    }
+
+    function shareToEmail() {
+      if (!activeRecipe) return;
+      const subject = "Delicious Recipe: " + activeRecipe.title;
+      const body = formatRecipePlainText(activeRecipe);
+      window.open("mailto:?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body), "_blank");
+    }
+
+    function shareToTelegram() {
+      if (!activeRecipe) return;
+      const shareUrl = getShareUrl(activeRecipe);
+      window.open("https://t.me/share/url?url=" + encodeURIComponent(shareUrl) + "&text=" + encodeURIComponent("🍳 " + activeRecipe.title), "_blank");
+    }
+
+    function shareToTwitter() {
+      if (!activeRecipe) return;
+      const shareUrl = getShareUrl(activeRecipe);
+      const text = "Cooking " + activeRecipe.title + " with Recipe Deck! 🍳✨";
+      window.open("https://twitter.com/intent/tweet?text=" + encodeURIComponent(text) + "&url=" + encodeURIComponent(shareUrl), "_blank");
+    }
+
+    function shareToFacebook() {
+      if (!activeRecipe) return;
+      const shareUrl = getShareUrl(activeRecipe);
+      window.open("https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(shareUrl), "_blank");
+    }
+
+    function shareToPinterest() {
+      if (!activeRecipe) return;
+      const shareUrl = getShareUrl(activeRecipe);
+      const media = activeRecipe.imageAttachment ? ("&media=" + encodeURIComponent(activeRecipe.imageAttachment)) : "";
+      window.open("https://pinterest.com/pin/create/button/?url=" + encodeURIComponent(shareUrl) + "&description=" + encodeURIComponent(activeRecipe.title) + media, "_blank");
     }
 
     function applySiteLanguage(lang) {
@@ -4078,6 +4483,44 @@
 
     async function updateSavedUI() {
       const recipes = await fetchSavedRecipes();
+
+      // Check for shared recipe in URL (?recipe=id or ?data=encoded)
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const sharedRecipeId = urlParams.get("recipe");
+        const sharedData = urlParams.get("data");
+
+        if (sharedData) {
+          try {
+            const jsonStr = decodeURIComponent(escape(atob(decodeURIComponent(sharedData))));
+            const parsed = JSON.parse(jsonStr);
+            if (parsed && parsed.title) {
+              loadRecipeIntoView(parsed);
+              // Persist shared recipe to SQLite if not already stored
+              (async () => {
+                try {
+                  const saveRes = await fetch("/api/recipes", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(parsed)
+                  });
+                  if (saveRes.ok) await updateSavedUI();
+                } catch (e) {}
+              })();
+            }
+          } catch (err) {
+            console.warn("Could not decode shared recipe data from URL:", err);
+          }
+        } else if (sharedRecipeId) {
+          const targetId = parseInt(sharedRecipeId, 10);
+          if (!isNaN(targetId)) {
+            loadSavedRecipe(targetId);
+          }
+        }
+      } catch (e) {
+        console.warn("URL param handling error:", e);
+      }
+
       document.getElementById("savedCount").innerText = recipes.length;
       renderTagFilterPills();
       filterSavedRecipes();
