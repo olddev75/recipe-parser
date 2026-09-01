@@ -879,6 +879,69 @@ app.get("/api/recipes/:id", async (req, res) => {
   }
 });
 
+
+// Bulk import recipes into SQLite
+app.post("/api/recipes/bulk-import", async (req, res) => {
+  try {
+    let recipes = Array.isArray(req.body) ? req.body : req.body?.recipes;
+    if (!Array.isArray(recipes) || recipes.length === 0) {
+      return res.status(400).json({ error: "No recipes array provided in request body" });
+    }
+
+    let importedCount = 0;
+    let skippedCount = 0;
+    const importedIds = [];
+
+    for (const rawRecipe of recipes) {
+      if (!rawRecipe || typeof rawRecipe !== "object") continue;
+      const validated = selfCheckAndVerifyRecipe(rawRecipe);
+      const title = (validated.title || "").trim();
+      if (!title) continue;
+
+      // Check if recipe already exists in SQLite by matching title (case-insensitive)
+      const existing = await db.get(
+        "SELECT id FROM recipes WHERE LOWER(TRIM(title)) = LOWER(TRIM(?))",
+        [title]
+      );
+
+      if (existing) {
+        skippedCount++;
+      } else {
+        const result = await db.run(
+          `INSERT INTO recipes (title, servings, prepTimeMinutes, cookTimeMinutes, ingredients, instructions, tags, rating, difficulty, isFavourite, imageAttachment, createdAt, updatedAt)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+          [
+            title,
+            validated.servings || 4,
+            validated.prepTimeMinutes || 0,
+            validated.cookTimeMinutes || 0,
+            JSON.stringify(validated.ingredients || []),
+            JSON.stringify(validated.instructions || []),
+            JSON.stringify(validated.tags || []),
+            typeof validated.rating === "number" ? validated.rating : 0,
+            validated.difficulty || "Easy",
+            validated.isFavourite ? 1 : 0,
+            validated.imageAttachment || null
+          ]
+        );
+        importedCount++;
+        importedIds.push(result.lastID);
+      }
+    }
+
+    res.json({
+      success: true,
+      importedCount,
+      skippedCount,
+      totalCount: recipes.length,
+      importedIds
+    });
+  } catch (err) {
+    console.error("Bulk import error:", err);
+    res.status(500).json({ error: "Failed to bulk import recipes" });
+  }
+});
+
 // Create a new recipe in SQLite
 app.post("/api/recipes", async (req, res) => {
   const validated = selfCheckAndVerifyRecipe(req.body);

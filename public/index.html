@@ -170,8 +170,18 @@
         <!-- Saved Recipes Sidebar Collection Box -->
         <div class="bg-slate-800/80 p-5 rounded-xl border border-slate-700 shadow-md">
           <div class="flex items-center justify-between mb-3">
-            <h3 id="collectionTitleText" class="text-sm font-semibold text-slate-200">Your Recipe Collection</h3>
-            <span id="collectionDbBadge" class="text-[11px] text-slate-400" title="All recipes are saved in your local database">SQLite Database</span>
+            <h3 id="collectionTitleText" class="text-sm font-semibold text-slate-200 truncate pr-2">Your Recipe Collection</h3>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button id="importBackupBtn" onclick="triggerImportBackup()" class="px-2 py-1 bg-slate-900 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-[11px] font-medium flex items-center gap-1 cursor-pointer transition shadow-sm" title="Import recipes from JSON backup">
+                <span>📥</span>
+                <span id="importBackupLabel" class="hidden sm:inline">Import Backup</span>
+              </button>
+              <button id="exportBackupBtn" onclick="triggerExportBackup()" class="px-2 py-1 bg-slate-900 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-[11px] font-medium flex items-center gap-1 cursor-pointer transition shadow-sm" title="Download full JSON backup">
+                <span>📤</span>
+                <span id="exportBackupLabel" class="hidden sm:inline">Export Backup</span>
+              </button>
+              <input type="file" id="importJsonFileInput" accept=".json,application/json" class="hidden" onchange="handleImportJsonFile(event)">
+            </div>
           </div>
 
           <!-- Live Search Input -->
@@ -832,6 +842,13 @@
        ========================================================================== */
     const I18N = {
       en: {
+        importBackup: "Import Backup",
+        exportBackup: "Export Backup",
+        tipImportBackup: "Import recipes from JSON backup file",
+        tipExportBackup: "Download full JSON backup file",
+        importSuccess: "Imported {n} recipes ({s} existing skipped)",
+        importFailed: "Failed to import recipes: {msg}",
+        invalidJsonFile: "Invalid JSON recipe backup file",
         export: "Export",
         exportJson: "Download JSON Backup",
         exportMarkdown: "Export Markdown ZIP",
@@ -3343,6 +3360,17 @@
 
       const colTitle = document.getElementById("collectionTitleText");
       if (colTitle) colTitle.innerText = t("collectionTitle");
+
+      const importBackupBtn = document.getElementById("importBackupBtn");
+      if (importBackupBtn) importBackupBtn.title = t("tipImportBackup");
+      const importBackupLabel = document.getElementById("importBackupLabel");
+      if (importBackupLabel) importBackupLabel.innerText = t("importBackup");
+
+      const exportBackupBtn = document.getElementById("exportBackupBtn");
+      if (exportBackupBtn) exportBackupBtn.title = t("tipExportBackup");
+      const exportBackupLabel = document.getElementById("exportBackupLabel");
+      if (exportBackupLabel) exportBackupLabel.innerText = t("exportBackup");
+
 
       const colDb = document.getElementById("collectionDbBadge");
       if (colDb) {
