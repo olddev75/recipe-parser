@@ -1296,7 +1296,62 @@ app.put("/api/admin/users/:id/role", requireAdmin, async (req, res) => {
   }
 });
 
-// POST /api/translate — AI Recipe Translation Endpoint using Gemini
+// Offline fallback dictionary for basic ingredient & UI translation terms
+const OFFLINE_TRANSLATION_MAPS = {
+  es: {
+    "salt": "sal", "pepper": "pimienta", "water": "agua", "oil": "aceite", "garlic": "ajo",
+    "onion": "cebolla", "sugar": "azúcar", "flour": "harina", "butter": "mantequilla", "milk": "leche",
+    "egg": "huevo", "eggs": "huevos", "chicken": "pollo", "beef": "carne de res", "pork": "cerdo",
+    "rice": "arroz", "sauce": "salsa", "lemon": "limón", "cheese": "queso", "parsley": "perejil"
+  },
+  fr: {
+    "salt": "sel", "pepper": "poivre", "water": "eau", "oil": "huile", "garlic": "ail",
+    "onion": "oignon", "sugar": "sucre", "flour": "farine", "butter": "beurre", "milk": "lait",
+    "egg": "œuf", "eggs": "œufs", "chicken": "poulet", "beef": "bœuf", "pork": "porc",
+    "rice": "riz", "sauce": "sauce", "lemon": "citron", "cheese": "fromage", "parsley": "persil"
+  },
+  de: {
+    "salt": "Salz", "pepper": "Pfeffer", "water": "Wasser", "oil": "Öl", "garlic": "Knoblauch",
+    "onion": "Zwiebel", "sugar": "Zucker", "flour": "Mehl", "butter": "Butter", "milk": "Milch",
+    "egg": "Ei", "eggs": "Eier", "chicken": "Hähnchen", "beef": "Rindfleisch", "pork": "Schweinefleisch",
+    "rice": "Reis", "sauce": "Soße", "lemon": "Zitrone", "cheese": "Käse", "parsley": "Petersilie"
+  },
+  it: {
+    "salt": "sale", "pepper": "pepe", "water": "acqua", "oil": "olio", "garlic": "aglio",
+    "onion": "cipolla", "sugar": "zucchero", "flour": "farina", "butter": "burro", "milk": "latte",
+    "egg": "uovo", "eggs": "uova", "chicken": "pollo", "beef": "manzo", "pork": "maiale",
+    "rice": "riso", "sauce": "salsa", "lemon": "limone", "cheese": "formaggio", "parsley": "prezzemolo"
+  }
+};
+
+function translateRecipeOffline(recipe, lang) {
+  const map = OFFLINE_TRANSLATION_MAPS[lang] || {};
+  const copy = JSON.parse(JSON.stringify(recipe));
+
+  const translateWord = (txt) => {
+    if (!txt || typeof txt !== "string") return txt;
+    let result = txt;
+    Object.keys(map).forEach(key => {
+      const regex = new RegExp(`\\b${key}\\b`, "gi");
+      result = result.replace(regex, map[key]);
+    });
+    return result;
+  };
+
+  copy.title = translateWord(copy.title) + ` (${lang.toUpperCase()})`;
+  if (Array.isArray(copy.ingredients)) {
+    copy.ingredients = copy.ingredients.map(ing => ({
+      ...ing,
+      name: translateWord(ing.name)
+    }));
+  }
+  if (Array.isArray(copy.instructions)) {
+    copy.instructions = copy.instructions.map(step => translateWord(step));
+  }
+  return copy;
+}
+
+// POST /api/translate — AI Recipe Translation Endpoint using Gemini with Offline Fallback
 app.post("/api/translate", async (req, res) => {
   const { recipe, targetLanguage } = req.body || {};
   if (!recipe || typeof recipe !== "object") {
@@ -1333,8 +1388,11 @@ app.post("/api/translate", async (req, res) => {
 
     res.json({ success: true, recipe: translated, targetLanguage });
   } catch (err) {
-    console.error("Translation API error:", err);
-    res.status(500).json({ error: `Failed to translate recipe into ${targetLangName}` });
+    console.warn(`[Translate] Gemini AI fetch failed (${err.message}). Using offline translation fallback...`);
+    const fallbackTranslated = translateRecipeOffline(recipe, targetLanguage);
+    if (recipe.id) fallbackTranslated.id = recipe.id;
+    if (recipe.imageAttachment) fallbackTranslated.imageAttachment = recipe.imageAttachment;
+    return res.json({ success: true, recipe: fallbackTranslated, targetLanguage, isOfflineFallback: true });
   }
 });
 
