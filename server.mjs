@@ -855,7 +855,7 @@ app.post("/api/scrape", async (req, res) => {
 
 
 /* ==========================================================================
-   SQLite RECIPE STORAGE & IMAGE ATTACHMENT API
+   TURSO CLOUD & LIBSQL RECIPE STORAGE API
    ========================================================================== */
 
 // Get all saved recipes

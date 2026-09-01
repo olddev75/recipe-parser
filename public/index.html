@@ -830,6 +830,11 @@
     // Active timers map: id -> { interval, remainingSeconds, totalSeconds, isRunning, label }
     let activeTimers = {};
 
+    // Translation state (reset on close/new recipe)
+    let currentTranslationLang = null;
+    let translationCache = {};
+    let isViewingOriginal = true;
+
     const CONVERSIONS = {
       g_to_oz: 0.035274,
       oz_to_g: 28.3495,
@@ -5528,12 +5533,20 @@ function sanitizeAndExtractIngredient(ing) {
       filterSavedRecipes();
     }
 
-    // Global Keydown Handlers (ESC to close help modal)
+    // Global Keydown Handlers (ESC to close active modals)
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
         const helpModal = document.getElementById("helpModal");
         if (helpModal && !helpModal.classList.contains("hidden")) {
           closeHelpModal();
+        }
+        const editRecipeModal = document.getElementById("editRecipeModal");
+        if (editRecipeModal && !editRecipeModal.classList.contains("hidden")) {
+          closeEditModal();
+        }
+        const shareModal = document.getElementById("shareModal");
+        if (shareModal && !shareModal.classList.contains("hidden")) {
+          closeShareModal();
         }
       }
     });
