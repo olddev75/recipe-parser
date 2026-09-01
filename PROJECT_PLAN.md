@@ -52,9 +52,9 @@ A responsive, distraction-free web application that normalises chaotic recipe so
 - [x] **Clipboard Auto-Paste:** Quick paste button for fast mobile onboarding.
 
 ### Phase 3: Data Management & Portability
-- [ ] **Export / Backup Engine:** One-click JSON / Markdown download of entire recipe library.
+- [x] **Export / Backup Engine:** One-click JSON database backup (`GET /api/export/json`) and Obsidian/Notion compatible Markdown ZIP export (`GET /api/export/markdown`).
 - [x] **Recipe Editing / Correction:** In-app manual edit modal to tweak misidentified quantities, ingredients, steps, tags, and times (`PUT /api/recipes/:id`).
-- [ ] **Category & Favourite Filtering:** Star/favourite recipes and filter by curated folders.
+- [x] **Category & Favourite Filtering:** Star/favourite recipes (`PATCH /api/recipes/:id/favourite`), quick sidebar star toggles, and dedicated 'Favourites Only' filter deck.
 
 ### Phase 4: Full PWA & Local Network Deployment
 - [ ] **Progressive Web App (PWA):** Web manifest and service worker caching for offline access.

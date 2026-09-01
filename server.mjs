@@ -1,3 +1,4 @@
+import { ZipArchive } from "archiver";
 import express from "express";
 import cors from "cors";
 import { GoogleGenAI, Type } from "@google/genai";
@@ -39,6 +40,7 @@ async function initDb() {
       tags TEXT,
       rating INTEGER DEFAULT 0,
       difficulty TEXT DEFAULT 'Easy',
+      isFavourite INTEGER DEFAULT 0,
       imageAttachment TEXT,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -54,6 +56,9 @@ async function initDb() {
   } catch (e) {}
   try {
     await db.exec("ALTER TABLE recipes ADD COLUMN difficulty TEXT DEFAULT 'Easy';");
+  } catch (e) {}
+  try {
+    await db.exec("ALTER TABLE recipes ADD COLUMN isFavourite INTEGER DEFAULT 0;");
   } catch (e) {}
 
   // Seed default starter recipes if database is fresh/empty
@@ -764,6 +769,7 @@ app.get("/api/recipes", async (req, res) => {
     const rows = await db.all("SELECT * FROM recipes ORDER BY updatedAt DESC, id DESC");
     const recipes = rows.map(r => ({
       ...r,
+      isFavourite: Boolean(r.isFavourite),
       ingredients: r.ingredients ? JSON.parse(r.ingredients) : [],
       instructions: r.instructions ? JSON.parse(r.instructions) : [],
       tags: r.tags ? JSON.parse(r.tags) : []
@@ -796,13 +802,13 @@ app.get("/api/recipes/:id", async (req, res) => {
 // Create a new recipe in SQLite
 app.post("/api/recipes", async (req, res) => {
   const validated = selfCheckAndVerifyRecipe(req.body);
-  const { title, servings, prepTimeMinutes, cookTimeMinutes, ingredients, instructions, tags, rating, difficulty, imageAttachment } = validated;
+  const { title, servings, prepTimeMinutes, cookTimeMinutes, ingredients, instructions, tags, rating, difficulty, isFavourite, imageAttachment } = validated;
   if (!title) return res.status(400).json({ error: "Title is required" });
 
   try {
     const result = await db.run(
-      `INSERT INTO recipes (title, servings, prepTimeMinutes, cookTimeMinutes, ingredients, instructions, tags, rating, difficulty, imageAttachment, createdAt, updatedAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+      `INSERT INTO recipes (title, servings, prepTimeMinutes, cookTimeMinutes, ingredients, instructions, tags, rating, difficulty, isFavourite, imageAttachment, createdAt, updatedAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
       [
         title,
         servings || 4,
@@ -813,6 +819,7 @@ app.post("/api/recipes", async (req, res) => {
         JSON.stringify(tags || []),
         typeof rating === "number" ? rating : 0,
         difficulty || "Easy",
+        isFavourite ? 1 : 0,
         imageAttachment || null
       ]
     );
@@ -833,7 +840,7 @@ app.post("/api/recipes", async (req, res) => {
 // Update full recipe by ID
 app.put("/api/recipes/:id", async (req, res) => {
   const validated = selfCheckAndVerifyRecipe(req.body);
-  const { title, servings, prepTimeMinutes, cookTimeMinutes, ingredients, instructions, tags, rating, difficulty, imageAttachment } = validated;
+  const { title, servings, prepTimeMinutes, cookTimeMinutes, ingredients, instructions, tags, rating, difficulty, isFavourite, imageAttachment } = validated;
   try {
     const existing = await db.get("SELECT * FROM recipes WHERE id = ?", req.params.id);
     if (!existing) return res.status(404).json({ error: "Recipe not found" });
@@ -849,6 +856,7 @@ app.put("/api/recipes/:id", async (req, res) => {
          tags = COALESCE(?, tags),
          rating = COALESCE(?, rating),
          difficulty = COALESCE(?, difficulty),
+         isFavourite = COALESCE(?, isFavourite),
          imageAttachment = ?,
          updatedAt = CURRENT_TIMESTAMP
        WHERE id = ?`,
@@ -862,6 +870,7 @@ app.put("/api/recipes/:id", async (req, res) => {
         tags !== undefined ? JSON.stringify(tags) : existing.tags,
         rating !== undefined ? rating : existing.rating,
         difficulty !== undefined ? difficulty : existing.difficulty,
+        isFavourite !== undefined ? (isFavourite ? 1 : 0) : existing.isFavourite,
         imageAttachment !== undefined ? imageAttachment : existing.imageAttachment,
         req.params.id
       ]
@@ -886,6 +895,146 @@ app.put("/api/recipes/:id", async (req, res) => {
 });
 
 // Dedicated endpoint to update rating
+
+// Toggle/set favourite status
+app.patch("/api/recipes/:id/favourite", async (req, res) => {
+  try {
+    const existing = await db.get("SELECT * FROM recipes WHERE id = ?", req.params.id);
+    if (!existing) return res.status(404).json({ error: "Recipe not found" });
+
+    let newFav;
+    if (req.body && typeof req.body.isFavourite === "boolean") {
+      newFav = req.body.isFavourite ? 1 : 0;
+    } else if (req.body && typeof req.body.isFavourite === "number") {
+      newFav = req.body.isFavourite ? 1 : 0;
+    } else {
+      newFav = existing.isFavourite ? 0 : 1;
+    }
+
+    await db.run(
+      "UPDATE recipes SET isFavourite = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?",
+      [newFav, req.params.id]
+    );
+
+    const updated = await db.get("SELECT * FROM recipes WHERE id = ?", req.params.id);
+    const updatedRecipe = {
+      ...updated,
+      isFavourite: Boolean(updated.isFavourite),
+      ingredients: updated.ingredients ? JSON.parse(updated.ingredients) : [],
+      instructions: updated.instructions ? JSON.parse(updated.instructions) : [],
+      tags: updated.tags ? JSON.parse(updated.tags) : []
+    };
+
+    res.json({
+      success: true,
+      isFavourite: Boolean(newFav),
+      recipe: updatedRecipe,
+      ...updatedRecipe
+    });
+  } catch (err) {
+    console.error("Toggle favourite error:", err);
+    res.status(500).json({ error: "Failed to update favourite status" });
+  }
+});
+
+// Export full database backup as JSON
+app.get("/api/export/json", async (req, res) => {
+  try {
+    const rows = await db.all("SELECT * FROM recipes ORDER BY id ASC");
+    const recipes = rows.map(r => ({
+      ...r,
+      isFavourite: Boolean(r.isFavourite),
+      ingredients: r.ingredients ? JSON.parse(r.ingredients) : [],
+      instructions: r.instructions ? JSON.parse(r.instructions) : [],
+      tags: r.tags ? JSON.parse(r.tags) : []
+    }));
+
+    const filename = `recipes_backup_${new Date().toISOString().slice(0, 10)}.json`;
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(JSON.stringify(recipes, null, 2));
+  } catch (err) {
+    console.error("Export JSON error:", err);
+    res.status(500).json({ error: "Failed to export JSON backup" });
+  }
+});
+
+// Export all recipes as a ZIP archive of individual Markdown files (Obsidian/Notion compatible)
+app.get("/api/export/markdown", async (req, res) => {
+  try {
+    const rows = await db.all("SELECT * FROM recipes ORDER BY id ASC");
+    const recipes = rows.map(r => ({
+      ...r,
+      isFavourite: Boolean(r.isFavourite),
+      ingredients: r.ingredients ? JSON.parse(r.ingredients) : [],
+      instructions: r.instructions ? JSON.parse(r.instructions) : [],
+      tags: r.tags ? JSON.parse(r.tags) : []
+    }));
+
+    const archive = new ZipArchive({ zlib: { level: 9 } });
+    const filename = `recipes_markdown_${new Date().toISOString().slice(0, 10)}.zip`;
+
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+    archive.on("error", (err) => {
+      console.error("Archive error:", err);
+      res.status(500).send({ error: err.message });
+    });
+
+    archive.pipe(res);
+
+    for (const recipe of recipes) {
+      const safeTitle = (recipe.title || `recipe_${recipe.id}`)
+        .replace(/[^a-zA-Z0-9_-]/g, "_")
+        .replace(/_+/g, "_")
+        .slice(0, 50);
+      const entryName = `${recipe.id}_${safeTitle}.md`;
+
+      let md = "---\n";
+      md += `title: "${(recipe.title || '').replace(/"/g, '\\"')}"\n`;
+      md += `servings: ${recipe.servings || 4}\n`;
+      md += `prepTimeMinutes: ${recipe.prepTimeMinutes || 0}\n`;
+      md += `cookTimeMinutes: ${recipe.cookTimeMinutes || 0}\n`;
+      md += `rating: ${recipe.rating || 0}\n`;
+      md += `difficulty: "${recipe.difficulty || 'Easy'}"\n`;
+      md += `isFavourite: ${Boolean(recipe.isFavourite)}\n`;
+      md += `tags: [${(recipe.tags || []).map(t => `"${t}"`).join(", ")}]\n`;
+      md += `createdAt: "${recipe.createdAt || ''}"\n`;
+      md += "---\n\n";
+
+      md += `# ${recipe.title}\n\n`;
+      md += `> ⏱️ **Prep:** ${recipe.prepTimeMinutes || 0}m | **Cook:** ${recipe.cookTimeMinutes || 0}m | **Servings:** ${recipe.servings || 4} | **Difficulty:** ${recipe.difficulty || 'Easy'} | **Rating:** ${'⭐'.repeat(recipe.rating || 0)}\n\n`;
+
+      if (recipe.tags && recipe.tags.length > 0) {
+        md += `**Tags:** ${recipe.tags.map(t => `#${t.replace(/^#/, '')}`).join(" ")}\n\n`;
+      }
+
+      md += `## 🥕 Ingredients\n\n`;
+      for (const ing of (recipe.ingredients || [])) {
+        const qtyStr = ing.quantity !== null && ing.quantity !== undefined ? `${ing.quantity} ` : "";
+        const unitStr = ing.unit ? `${ing.unit} ` : "";
+        const subsStr = (ing.substitutions && ing.substitutions.length > 0) ? ` *(Subs: ${ing.substitutions.join(", ")})*` : "";
+        md += `- [ ] ${qtyStr}${unitStr}${ing.name}${subsStr}\n`;
+      }
+      md += "\n";
+
+      md += `## 👩‍🍳 Instructions\n\n`;
+      (recipe.instructions || []).forEach((step, idx) => {
+        md += `${idx + 1}. ${step}\n`;
+      });
+      md += "\n";
+
+      archive.append(md, { name: entryName });
+    }
+
+    await archive.finalize();
+  } catch (err) {
+    console.error("Export Markdown error:", err);
+    res.status(500).json({ error: "Failed to export Markdown ZIP archive" });
+  }
+});
+
 app.patch("/api/recipes/:id/rating", async (req, res) => {
   const { rating } = req.body;
   try {
