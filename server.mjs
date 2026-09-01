@@ -868,11 +868,16 @@ app.put("/api/recipes/:id", async (req, res) => {
     );
 
     const updated = await db.get("SELECT * FROM recipes WHERE id = ?", req.params.id);
-    res.json({
+    const updatedRecipe = {
       ...updated,
       ingredients: updated.ingredients ? JSON.parse(updated.ingredients) : [],
       instructions: updated.instructions ? JSON.parse(updated.instructions) : [],
       tags: updated.tags ? JSON.parse(updated.tags) : []
+    };
+    res.json({
+      success: true,
+      recipe: updatedRecipe,
+      ...updatedRecipe
     });
   } catch (err) {
     console.error("Update recipe error:", err);

@@ -53,7 +53,7 @@ A responsive, distraction-free web application that normalises chaotic recipe so
 
 ### Phase 3: Data Management & Portability
 - [ ] **Export / Backup Engine:** One-click JSON / Markdown download of entire recipe library.
-- [ ] **Recipe Editing / Correction:** In-app manual edit modal to tweak misidentified quantities or steps.
+- [x] **Recipe Editing / Correction:** In-app manual edit modal to tweak misidentified quantities, ingredients, steps, tags, and times (`PUT /api/recipes/:id`).
 - [ ] **Category & Favourite Filtering:** Star/favourite recipes and filter by curated folders.
 
 ### Phase 4: Full PWA & Local Network Deployment
