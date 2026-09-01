@@ -2409,18 +2409,19 @@
       toast.classList.add(...borderClass.split(" "));
 
       const actionBtn = targetRecipeId 
-        ? '<button onclick="loadSavedRecipe(' + targetRecipeId + '); this.closest('.pointer-events-auto').remove();" class="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-[11px] shrink-0 cursor-pointer shadow transition">' + t("viewAndConfirm") + '</button>'
+        ? `<button onclick="loadSavedRecipe(${targetRecipeId}); this.closest('.pointer-events-auto').remove();" class="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-[11px] shrink-0 cursor-pointer shadow transition">${t("viewAndConfirm")}</button>`
         : "";
 
-      toast.innerHTML = 
-        '<div class="flex items-center gap-2.5 min-w-0">' +
-          '<span class="text-base shrink-0 ' + (type === 'progress' ? 'animate-spin' : '') + '">' + icon + '</span>' +
-          '<span class="leading-snug break-words">' + message + '</span>' +
-        '</div>' +
-        '<div class="flex items-center gap-1.5 shrink-0">' +
-          actionBtn +
-          '<button onclick="this.closest('.pointer-events-auto').remove()" class="p-1 text-slate-400 hover:text-white rounded cursor-pointer">✕</button>' +
-        '</div>';
+      toast.innerHTML = `
+        <div class="flex items-center gap-2.5 min-w-0">
+          <span class="text-base shrink-0 ${type === 'progress' ? 'animate-spin' : ''}">${icon}</span>
+          <span class="leading-snug break-words">${message}</span>
+        </div>
+        <div class="flex items-center gap-1.5 shrink-0">
+          ${actionBtn}
+          <button onclick="this.closest('.pointer-events-auto').remove()" class="p-1 text-slate-400 hover:text-white rounded cursor-pointer">✕</button>
+        </div>
+      `;
 
       container.appendChild(toast);
       requestAnimationFrame(() => {
@@ -2475,8 +2476,10 @@
       
       text += "🥕 " + t("ingredients") + ":\n";
       const ingList = (recipe.ingredients || []).map(item => {
-        const scaled = scaleIngredient(item, baseServings, currentServingsCount, currentUnit);
-        return "• " + scaled.qty + " " + (scaled.unit ? scaled.unit + " " : "") + scaled.name;
+        const scaled = getScaledIngredientDisplay(item);
+        const qtyStr = scaled.qty !== null ? scaled.qty + " " : "";
+        const unitStr = scaled.unit ? scaled.unit + " " : "";
+        return "• " + qtyStr + unitStr + scaled.name;
       });
       text += ingList.join("\n") + "\n\n";
 
