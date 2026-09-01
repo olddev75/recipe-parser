@@ -8,3 +8,4 @@ recipes.db*
 .turso
 .DS_Store
 
+.aider*

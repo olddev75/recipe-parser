@@ -61,5 +61,5 @@ A responsive, distraction-free web application that normalises chaotic recipe so
 - [x] **Turso Cloud Database:** Unified `@libsql/client` integration with remote synchronization (`scripts/migrate-to-turso.mjs`).
 
 ### Phase 4: Full PWA & Local Network Deployment
-- [ ] **Progressive Web App (PWA):** Web manifest and service worker caching for offline access.
+- [x] **Progressive Web App (PWA):** Web manifest and service worker caching for offline access (`public/manifest.json`, `public/sw.js`, and install/offline UI).
 - [ ] **Systemd Service:** Configure auto-start on Linux Mint / Home Server boot.

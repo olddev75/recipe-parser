@@ -4,6 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Recipe Deck</title>
+  <!-- PWA: Web App Manifest & Mobile Meta Tags -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#f59e0b">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="RecipeDeck">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <meta name="description" content="Turn any recipe or photo into clean steps, scale servings, cook step-by-step — works offline.">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     @media print {
@@ -82,6 +91,18 @@
             </a>
           </div>
         </div>
+        <!-- PWA: Install App Button (hidden until browser fires beforeinstallprompt) -->
+        <button id="pwaInstallBtn" onclick="triggerPwaInstall()" class="hidden px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-600/50 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow cursor-pointer" title="Install Recipe Deck as an app on this device">
+          <span>📲</span>
+          <span id="pwaInstallLabel">Install App</span>
+        </button>
+
+        <!-- PWA: Offline Status Badge (shown when navigator.onLine === false) -->
+        <div id="offlineBadge" class="hidden px-3 py-1.5 bg-red-900/40 border border-red-700/60 text-red-300 rounded-lg text-xs font-bold flex items-center gap-1.5 animate-pulse" title="You are offline. Saved recipes still available.">
+          <span>📵</span>
+          <span id="offlineBadgeLabel">Offline</span>
+        </div>
+
         <!-- Help Button -->
         <button onclick="openHelpModal()" id="headerHelpBtn" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow cursor-pointer" title="Learn how to use Recipe Deck">
           <span>❓</span>
@@ -1041,7 +1062,14 @@
         tipNextStep: "Move to the next step or finish recipe",
         tipTagFilter: "Show only recipes with this tag",
         tipOpenRecipe: "Click to open this recipe",
-        tipDeleteRecipe: "Delete this recipe from your collection"
+        tipDeleteRecipe: "Delete this recipe from your collection",
+
+        installApp: "Install App",
+        tipInstallApp: "Install Recipe Deck as an app on this device — works offline",
+        offlineLabel: "Offline",
+        tipOffline: "You are offline. Saved recipes still available.",
+        offlineAiWarning: "📵 You are offline. AI import and web scraping require an internet connection.",
+        pwaInstalled: "✅ Recipe Deck installed successfully!"
       },
       es: {
         export: "Exportar",
@@ -5554,6 +5582,98 @@ function sanitizeAndExtractIngredient(ing) {
     // Startup Initialization
     applySiteLanguage(getSiteLanguage());
     updateSavedUI();
+
+    /* ==========================================================================
+       PWA: SERVICE WORKER REGISTRATION & INSTALL PROMPT
+       ========================================================================== */
+
+    // ── Service Worker Registration ───────────────────────────────────────────
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").then((reg) => {
+          console.log("[SW] Registered, scope:", reg.scope);
+        }).catch((err) => {
+          console.warn("[SW] Registration failed:", err);
+        });
+      });
+    }
+
+    // ── Capture beforeinstallprompt and show Install button ──────────────────
+    let _deferredInstallPrompt = null;
+
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      _deferredInstallPrompt = e;
+      const btn = document.getElementById("pwaInstallBtn");
+      if (btn) btn.classList.remove("hidden");
+    });
+
+    window.addEventListener("appinstalled", () => {
+      _deferredInstallPrompt = null;
+      const btn = document.getElementById("pwaInstallBtn");
+      if (btn) btn.classList.add("hidden");
+      showBackgroundNotification("success", t("pwaInstalled") || "✅ Recipe Deck installed!");
+    });
+
+    function triggerPwaInstall() {
+      if (!_deferredInstallPrompt) return;
+      _deferredInstallPrompt.prompt();
+      _deferredInstallPrompt.userChoice.then((choice) => {
+        if (choice.outcome === "accepted") {
+          _deferredInstallPrompt = null;
+          const btn = document.getElementById("pwaInstallBtn");
+          if (btn) btn.classList.add("hidden");
+        }
+      });
+    }
+
+    // ── Online / Offline Status Badge ─────────────────────────────────────────
+    function syncOnlineStatus() {
+      const badge = document.getElementById("offlineBadge");
+      if (!badge) return;
+      if (navigator.onLine) {
+        badge.classList.add("hidden");
+      } else {
+        badge.classList.remove("hidden");
+      }
+    }
+
+    window.addEventListener("online",  syncOnlineStatus);
+    window.addEventListener("offline", syncOnlineStatus);
+    syncOnlineStatus(); // Set initial state on load
+
+    // ── Offline Guard for AI / Scrape actions ─────────────────────────────────
+    // Wrap parse/scrape calls to show toast if device is offline before fetch
+    const _originalHandleParseText  = typeof handleParseText  === "function" ? handleParseText  : null;
+    const _originalHandleParseImage = typeof handleParseImage === "function" ? handleParseImage : null;
+    const _originalHandleScrapeUrl  = typeof handleScrapeUrl  === "function" ? handleScrapeUrl  : null;
+
+    function _checkOffline() {
+      if (!navigator.onLine) {
+        showBackgroundNotification("warning", t("offlineAiWarning") || "📵 Offline — AI import requires internet.");
+        return true;
+      }
+      return false;
+    }
+
+    if (_originalHandleParseText) {
+      window.handleParseText = function() {
+        if (_checkOffline()) return;
+        return _originalHandleParseText.apply(this, arguments);
+      };
+    }
+    if (_originalHandleParseImage) {
+      window.handleParseImage = function() {
+        if (_checkOffline()) return;
+        return _originalHandleParseImage.apply(this, arguments);
+      };
+    }
+    if (_originalHandleScrapeUrl) {
+      window.handleScrapeUrl = function() {
+        if (_checkOffline()) return;
+        return _originalHandleScrapeUrl.apply(this, arguments);
+      };
+    }
   </script>
 </body>
 </html>
