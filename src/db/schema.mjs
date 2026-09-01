@@ -7,7 +7,7 @@
  * Exports: initDb()
  */
 
-import { db, dbGet, dbRun } from "./client.mjs";
+import { dbGet, dbRun, dbExecute } from "./client.mjs";
 
 /**
  * Initializes database schema, creates indexes, applies PRAGMA column migrations,
@@ -15,7 +15,7 @@ import { db, dbGet, dbRun } from "./client.mjs";
  */
 export async function initDb() {
   // 1. Create Users Table
-  await db.execute(`
+  await dbExecute(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       email TEXT UNIQUE NOT NULL,
@@ -30,7 +30,7 @@ export async function initDb() {
   `);
 
   // 2. Create Recipes Table
-  await db.execute(`
+  await dbExecute(`
     CREATE TABLE IF NOT EXISTS recipes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       userId TEXT,
@@ -52,7 +52,7 @@ export async function initDb() {
   `);
 
   // 3. Create Recipe Comments Table
-  await db.execute(`
+  await dbExecute(`
     CREATE TABLE IF NOT EXISTS recipe_comments (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       recipeId INTEGER NOT NULL,
@@ -64,25 +64,25 @@ export async function initDb() {
   `);
 
   // 4. Create Performance Indexes
-  await db.execute(`CREATE INDEX IF NOT EXISTS idx_recipes_userId ON recipes(userId);`);
-  await db.execute(`CREATE INDEX IF NOT EXISTS idx_recipes_isPublic ON recipes(isPublic);`);
-  await db.execute(`CREATE INDEX IF NOT EXISTS idx_comments_recipeId ON recipe_comments(recipeId);`);
+  await dbExecute(`CREATE INDEX IF NOT EXISTS idx_recipes_userId ON recipes(userId);`);
+  await dbExecute(`CREATE INDEX IF NOT EXISTS idx_recipes_isPublic ON recipes(isPublic);`);
+  await dbExecute(`CREATE INDEX IF NOT EXISTS idx_comments_recipeId ON recipe_comments(recipeId);`);
 
   // 5. Schema PRAGMA Migrations
   try {
-    const recipeCols = (await db.execute("PRAGMA table_info(recipes)")).rows.map(r => r.name);
-    if (!recipeCols.includes("tags")) await db.execute("ALTER TABLE recipes ADD COLUMN tags TEXT;");
-    if (!recipeCols.includes("rating")) await db.execute("ALTER TABLE recipes ADD COLUMN rating INTEGER DEFAULT 0;");
-    if (!recipeCols.includes("difficulty")) await db.execute("ALTER TABLE recipes ADD COLUMN difficulty TEXT DEFAULT 'Easy';");
-    if (!recipeCols.includes("isFavourite")) await db.execute("ALTER TABLE recipes ADD COLUMN isFavourite INTEGER DEFAULT 0;");
-    if (!recipeCols.includes("userId")) await db.execute("ALTER TABLE recipes ADD COLUMN userId TEXT;");
-    if (!recipeCols.includes("isPublic")) await db.execute("ALTER TABLE recipes ADD COLUMN isPublic INTEGER DEFAULT 1;");
+    const recipeCols = (await dbExecute("PRAGMA table_info(recipes)")).rows.map(r => r.name);
+    if (!recipeCols.includes("tags")) await dbExecute("ALTER TABLE recipes ADD COLUMN tags TEXT;");
+    if (!recipeCols.includes("rating")) await dbExecute("ALTER TABLE recipes ADD COLUMN rating INTEGER DEFAULT 0;");
+    if (!recipeCols.includes("difficulty")) await dbExecute("ALTER TABLE recipes ADD COLUMN difficulty TEXT DEFAULT 'Easy';");
+    if (!recipeCols.includes("isFavourite")) await dbExecute("ALTER TABLE recipes ADD COLUMN isFavourite INTEGER DEFAULT 0;");
+    if (!recipeCols.includes("userId")) await dbExecute("ALTER TABLE recipes ADD COLUMN userId TEXT;");
+    if (!recipeCols.includes("isPublic")) await dbExecute("ALTER TABLE recipes ADD COLUMN isPublic INTEGER DEFAULT 1;");
 
-    const userCols = (await db.execute("PRAGMA table_info(users)")).rows.map(r => r.name);
-    if (!userCols.includes("bio")) await db.execute("ALTER TABLE users ADD COLUMN bio TEXT;");
-    if (!userCols.includes("avatar")) await db.execute("ALTER TABLE users ADD COLUMN avatar TEXT;");
-    if (!userCols.includes("googleId")) await db.execute("ALTER TABLE users ADD COLUMN googleId TEXT;");
-    if (!userCols.includes("isAdmin")) await db.execute("ALTER TABLE users ADD COLUMN isAdmin INTEGER DEFAULT 0;");
+    const userCols = (await dbExecute("PRAGMA table_info(users)")).rows.map(r => r.name);
+    if (!userCols.includes("bio")) await dbExecute("ALTER TABLE users ADD COLUMN bio TEXT;");
+    if (!userCols.includes("avatar")) await dbExecute("ALTER TABLE users ADD COLUMN avatar TEXT;");
+    if (!userCols.includes("googleId")) await dbExecute("ALTER TABLE users ADD COLUMN googleId TEXT;");
+    if (!userCols.includes("isAdmin")) await dbExecute("ALTER TABLE users ADD COLUMN isAdmin INTEGER DEFAULT 0;");
   } catch (err) {
     console.warn("[Schema] Migration check notice:", err.message);
   }

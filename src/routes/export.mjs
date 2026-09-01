@@ -6,9 +6,12 @@
  */
 
 import express from "express";
-import archiver from "archiver";
+import { createRequire } from "module";
 import { optionalAuth } from "../middleware/auth.mjs";
 import { getAllRecipesForUser } from "../db/repository.mjs";
+
+const require = createRequire(import.meta.url);
+const archiver = require("archiver");
 
 const router = express.Router();
 

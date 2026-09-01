@@ -45,7 +45,7 @@ app.use("/api/export", exportRouter);
 app.use("/api/admin", adminRouter);
 
 // Serve PWA SPA entry point for all non-API GET requests
-app.get("*", (req, res, next) => {
+app.get("/{*splat}", (req, res, next) => {
   if (req.path.startsWith("/api/")) return next();
   res.sendFile(path.join(config.publicDir, "index.html"));
 });
@@ -54,13 +54,19 @@ app.get("*", (req, res, next) => {
 app.use(notFoundHandler);
 app.use(errorHandler);
 
+process.on("unhandledRejection", (reason) => {
+  console.warn("[Process Notice] Unhandled promise rejection:", reason?.message || reason);
+});
+
 // ─── Bootstrap & Database Initialization ─────────────────────────────────────
 async function startServer() {
   try {
     await initDb();
-    app.listen(config.port, () => {
+    const server = app.listen(config.port, "0.0.0.0", () => {
       console.log(`\n🚀 Recipe Deck V2.0 running at http://localhost:${config.port}\n`);
     });
+    // Prevent event loop from exiting
+    setInterval(() => {}, 3600000);
   } catch (err) {
     console.error("Fatal startup error:", err);
     process.exit(1);
