@@ -7,17 +7,20 @@
 //     + offline fallback JSON error to toast in UI
 // =============================================================================
 
-const CACHE_NAME = "recipe-deck-v12";
-const RECIPES_CACHE = "recipe-deck-api-v12";
+const CACHE_NAME = "recipe-deck-v2.0";
+const RECIPES_CACHE = "recipe-deck-api-v2.0";
 
 const APP_SHELL = [
   "/",
   "/index.html",
   "/manifest.json",
+  "/css/app.css",
+  "/js/app.js",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
   "/icons/icon-maskable-512.png",
-  "https://cdn.tailwindcss.com"
+  "https://cdn.tailwindcss.com",
+  "https://accounts.google.com/gsi/client"
 ];
 
 // ── Install: pre-cache App Shell ─────────────────────────────────────────────

@@ -1,0 +1,77 @@
+/* =============================================================================
+   Recipe Deck V2.0 — Custom Stylesheet & Print Directives
+   ============================================================================= */
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Strikethrough checklist transitions */
+.checked-item {
+  text-decoration: line-through;
+  opacity: 0.5;
+  transition: all 0.2s ease-in-out;
+}
+
+/* Print Engine Directives (@media print) */
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    font-size: 12pt;
+  }
+
+  .no-print,
+  #siteHeader,
+  #sidebar,
+  #bgToastContainer,
+  .print-hide,
+  button,
+  select,
+  nav {
+    display: none !important;
+  }
+
+  #recipeCard {
+    box-shadow: none !important;
+    border: none !important;
+    background: transparent !important;
+    color: #000000 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  #recipeTitle {
+    color: #000000 !important;
+    font-size: 24pt !important;
+  }
+
+  .text-slate-100, .text-slate-200, .text-slate-300, .text-slate-400, .text-amber-400, .text-amber-300 {
+    color: #1e293b !important;
+  }
+
+  .bg-slate-900, .bg-slate-800, .bg-slate-950 {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+  }
+
+  .print-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 1.5rem !important;
+  }
+}
