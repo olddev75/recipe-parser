@@ -616,7 +616,7 @@ function promiseWithTimeout(promise, ms, timeoutErrorMsg = "Operation timed out"
 
 // Resilient Multi-Model Gemini Generator with Auto-Fallback
 async function generateRecipeContent(contents, config = {}) {
-  const models = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.5-pro"];
+  const models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
   let lastErr = null;
   for (const model of models) {
     try {
