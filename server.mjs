@@ -3,8 +3,7 @@ import express from "express";
 import cors from "cors";
 import { GoogleGenAI, Type } from "@google/genai";
 import "dotenv/config";
-import sqlite3 from "sqlite3";
-import { open } from "sqlite";
+import { createClient } from "@libsql/client";
 
 import path from "path";
 import { fileURLToPath } from "url";
@@ -174,15 +173,35 @@ function sanitizeAndExtractIngredient(ing) {
 }
 
 
-// Initialize SQLite database
-let db;
-async function initDb() {
-  db = await open({
-    filename: dbPath,
-    driver: sqlite3.Database
-  });
+// Initialize @libsql/client (Turso Cloud or fallback to local SQLite)
+const tursoUrl = process.env.TURSO_DATABASE_URL || `file:${dbPath}`;
+const tursoAuthToken = process.env.TURSO_AUTH_TOKEN || undefined;
 
-  await db.exec(`
+const db = createClient({
+  url: tursoUrl,
+  authToken: tursoAuthToken
+});
+
+async function dbAll(sql, args = []) {
+  const normArgs = Array.isArray(args) ? args : (args !== undefined ? [args] : []);
+  const res = await db.execute({ sql, args: normArgs });
+  return res.rows;
+}
+
+async function dbGet(sql, args = []) {
+  const normArgs = Array.isArray(args) ? args : (args !== undefined ? [args] : []);
+  const res = await db.execute({ sql, args: normArgs });
+  return res.rows[0] || null;
+}
+
+async function dbRun(sql, args = []) {
+  const normArgs = Array.isArray(args) ? args : (args !== undefined ? [args] : []);
+  const res = await db.execute({ sql, args: normArgs });
+  return { lastID: Number(res.lastInsertRowid), changes: res.rowsAffected };
+}
+
+async function initDb() {
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS recipes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
@@ -203,21 +222,17 @@ async function initDb() {
 
   // Migration: add columns if existing table doesn't have them
   try {
-    await db.exec("ALTER TABLE recipes ADD COLUMN tags TEXT;");
-  } catch (e) {}
-  try {
-    await db.exec("ALTER TABLE recipes ADD COLUMN rating INTEGER DEFAULT 0;");
-  } catch (e) {}
-  try {
-    await db.exec("ALTER TABLE recipes ADD COLUMN difficulty TEXT DEFAULT 'Easy';");
-  } catch (e) {}
-  try {
-    await db.exec("ALTER TABLE recipes ADD COLUMN isFavourite INTEGER DEFAULT 0;");
+    const tableInfo = await db.execute("PRAGMA table_info(recipes)");
+    const cols = tableInfo.rows.map(r => r.name);
+    if (!cols.includes("tags")) await db.execute("ALTER TABLE recipes ADD COLUMN tags TEXT;");
+    if (!cols.includes("rating")) await db.execute("ALTER TABLE recipes ADD COLUMN rating INTEGER DEFAULT 0;");
+    if (!cols.includes("difficulty")) await db.execute("ALTER TABLE recipes ADD COLUMN difficulty TEXT DEFAULT 'Easy';");
+    if (!cols.includes("isFavourite")) await db.execute("ALTER TABLE recipes ADD COLUMN isFavourite INTEGER DEFAULT 0;");
   } catch (e) {}
 
   // Seed default starter recipes if database is fresh/empty
-  const countRow = await db.get("SELECT COUNT(*) as count FROM recipes");
-  if (countRow && countRow.count === 0) {
+  const countRow = await dbGet("SELECT COUNT(*) as count FROM recipes");
+  if (countRow && Number(countRow.count) === 0) {
     const starterRecipes = [
       {
         title: "Pad Thai Gai (Thai Stir-Fried Noodles)",
@@ -281,7 +296,7 @@ async function initDb() {
     ];
 
     for (const r of starterRecipes) {
-      await db.run(
+      await dbRun(
         `INSERT INTO recipes (title, servings, prepTimeMinutes, cookTimeMinutes, ingredients, instructions, tags, rating, difficulty, imageAttachment)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
@@ -304,20 +319,20 @@ async function initDb() {
 
   // Auto-repair & normalize all stored ingredients and entities
   try {
-    const allRows = await db.all("SELECT * FROM recipes");
+    const allRows = await dbAll("SELECT * FROM recipes");
     for (const r of allRows) {
       if (r.ingredients) {
         try {
-          const parsedIngs = JSON.parse(r.ingredients);
+          const parsedIngs = typeof r.ingredients === "string" ? JSON.parse(r.ingredients) : r.ingredients;
           const sanitized = parsedIngs.map(sanitizeAndExtractIngredient);
-          await db.run("UPDATE recipes SET ingredients = ? WHERE id = ?", [JSON.stringify(sanitized), r.id]);
+          await dbRun("UPDATE recipes SET ingredients = ? WHERE id = ?", [JSON.stringify(sanitized), r.id]);
         } catch (e) {}
       }
     }
-    console.log("🧹 Verified and sanitized stored recipes in SQLite database");
+    console.log("🧹 Verified and sanitized stored recipes in database");
   } catch (e) {}
 
-  console.log("📦 SQLite database initialized (recipes.db)");
+  console.log(`📦 Database initialized (${tursoUrl.startsWith("libsql:") ? "Turso Cloud" : "Local SQLite file"})`);
 }
 await initDb();
 
@@ -846,7 +861,7 @@ app.post("/api/scrape", async (req, res) => {
 // Get all saved recipes
 app.get("/api/recipes", async (req, res) => {
   try {
-    const rows = await db.all("SELECT * FROM recipes ORDER BY updatedAt DESC, id DESC");
+    const rows = await dbAll("SELECT * FROM recipes ORDER BY updatedAt DESC, id DESC");
     const recipes = rows.map(r => ({
       ...r,
       isFavourite: Boolean(r.isFavourite),
@@ -864,7 +879,7 @@ app.get("/api/recipes", async (req, res) => {
 // Get a single recipe by ID
 app.get("/api/recipes/:id", async (req, res) => {
   try {
-    const recipe = await db.get("SELECT * FROM recipes WHERE id = ?", req.params.id);
+    const recipe = await dbGet("SELECT * FROM recipes WHERE id = ?", req.params.id);
     if (!recipe) return res.status(404).json({ error: "Recipe not found" });
 
     res.json({
@@ -899,7 +914,7 @@ app.post("/api/recipes/bulk-import", async (req, res) => {
       if (!title) continue;
 
       // Check if recipe already exists in SQLite by matching title (case-insensitive)
-      const existing = await db.get(
+      const existing = await dbGet(
         "SELECT id FROM recipes WHERE LOWER(TRIM(title)) = LOWER(TRIM(?))",
         [title]
       );
@@ -907,7 +922,7 @@ app.post("/api/recipes/bulk-import", async (req, res) => {
       if (existing) {
         skippedCount++;
       } else {
-        const result = await db.run(
+        const result = await dbRun(
           `INSERT INTO recipes (title, servings, prepTimeMinutes, cookTimeMinutes, ingredients, instructions, tags, rating, difficulty, isFavourite, imageAttachment, createdAt, updatedAt)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
           [
@@ -949,7 +964,7 @@ app.post("/api/recipes", async (req, res) => {
   if (!title) return res.status(400).json({ error: "Title is required" });
 
   try {
-    const result = await db.run(
+    const result = await dbRun(
       `INSERT INTO recipes (title, servings, prepTimeMinutes, cookTimeMinutes, ingredients, instructions, tags, rating, difficulty, isFavourite, imageAttachment, createdAt, updatedAt)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
       [
@@ -967,7 +982,7 @@ app.post("/api/recipes", async (req, res) => {
       ]
     );
 
-    const saved = await db.get("SELECT * FROM recipes WHERE id = ?", result.lastID);
+    const saved = await dbGet("SELECT * FROM recipes WHERE id = ?", result.lastID);
     res.status(201).json({
       ...saved,
       ingredients: saved.ingredients ? JSON.parse(saved.ingredients) : [],
@@ -985,10 +1000,10 @@ app.put("/api/recipes/:id", async (req, res) => {
   const validated = selfCheckAndVerifyRecipe(req.body);
   const { title, servings, prepTimeMinutes, cookTimeMinutes, ingredients, instructions, tags, rating, difficulty, isFavourite, imageAttachment } = validated;
   try {
-    const existing = await db.get("SELECT * FROM recipes WHERE id = ?", req.params.id);
+    const existing = await dbGet("SELECT * FROM recipes WHERE id = ?", req.params.id);
     if (!existing) return res.status(404).json({ error: "Recipe not found" });
 
-    await db.run(
+    await dbRun(
       `UPDATE recipes SET
          title = COALESCE(?, title),
          servings = COALESCE(?, servings),
@@ -1019,7 +1034,7 @@ app.put("/api/recipes/:id", async (req, res) => {
       ]
     );
 
-    const updated = await db.get("SELECT * FROM recipes WHERE id = ?", req.params.id);
+    const updated = await dbGet("SELECT * FROM recipes WHERE id = ?", req.params.id);
     const updatedRecipe = {
       ...updated,
       ingredients: updated.ingredients ? JSON.parse(updated.ingredients) : [],
@@ -1042,7 +1057,7 @@ app.put("/api/recipes/:id", async (req, res) => {
 // Toggle/set favourite status
 app.patch("/api/recipes/:id/favourite", async (req, res) => {
   try {
-    const existing = await db.get("SELECT * FROM recipes WHERE id = ?", req.params.id);
+    const existing = await dbGet("SELECT * FROM recipes WHERE id = ?", req.params.id);
     if (!existing) return res.status(404).json({ error: "Recipe not found" });
 
     let newFav;
@@ -1054,12 +1069,12 @@ app.patch("/api/recipes/:id/favourite", async (req, res) => {
       newFav = existing.isFavourite ? 0 : 1;
     }
 
-    await db.run(
+    await dbRun(
       "UPDATE recipes SET isFavourite = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?",
       [newFav, req.params.id]
     );
 
-    const updated = await db.get("SELECT * FROM recipes WHERE id = ?", req.params.id);
+    const updated = await dbGet("SELECT * FROM recipes WHERE id = ?", req.params.id);
     const updatedRecipe = {
       ...updated,
       isFavourite: Boolean(updated.isFavourite),
@@ -1083,7 +1098,7 @@ app.patch("/api/recipes/:id/favourite", async (req, res) => {
 // Export full database backup as JSON
 app.get("/api/export/json", async (req, res) => {
   try {
-    const rows = await db.all("SELECT * FROM recipes ORDER BY id ASC");
+    const rows = await dbAll("SELECT * FROM recipes ORDER BY id ASC");
     const recipes = rows.map(r => ({
       ...r,
       isFavourite: Boolean(r.isFavourite),
@@ -1105,7 +1120,7 @@ app.get("/api/export/json", async (req, res) => {
 // Export all recipes as a ZIP archive of individual Markdown files (Obsidian/Notion compatible)
 app.get("/api/export/markdown", async (req, res) => {
   try {
-    const rows = await db.all("SELECT * FROM recipes ORDER BY id ASC");
+    const rows = await dbAll("SELECT * FROM recipes ORDER BY id ASC");
     const recipes = rows.map(r => ({
       ...r,
       isFavourite: Boolean(r.isFavourite),
@@ -1181,15 +1196,15 @@ app.get("/api/export/markdown", async (req, res) => {
 app.patch("/api/recipes/:id/rating", async (req, res) => {
   const { rating } = req.body;
   try {
-    const existing = await db.get("SELECT * FROM recipes WHERE id = ?", req.params.id);
+    const existing = await dbGet("SELECT * FROM recipes WHERE id = ?", req.params.id);
     if (!existing) return res.status(404).json({ error: "Recipe not found" });
 
-    await db.run(
+    await dbRun(
       `UPDATE recipes SET rating = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`,
       [typeof rating === "number" ? rating : 0, req.params.id]
     );
 
-    const updated = await db.get("SELECT * FROM recipes WHERE id = ?", req.params.id);
+    const updated = await dbGet("SELECT * FROM recipes WHERE id = ?", req.params.id);
     res.json({
       ...updated,
       ingredients: updated.ingredients ? JSON.parse(updated.ingredients) : [],
@@ -1206,15 +1221,15 @@ app.patch("/api/recipes/:id/rating", async (req, res) => {
 app.patch("/api/recipes/:id/difficulty", async (req, res) => {
   const { difficulty } = req.body;
   try {
-    const existing = await db.get("SELECT * FROM recipes WHERE id = ?", req.params.id);
+    const existing = await dbGet("SELECT * FROM recipes WHERE id = ?", req.params.id);
     if (!existing) return res.status(404).json({ error: "Recipe not found" });
 
-    await db.run(
+    await dbRun(
       `UPDATE recipes SET difficulty = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`,
       [difficulty || "Easy", req.params.id]
     );
 
-    const updated = await db.get("SELECT * FROM recipes WHERE id = ?", req.params.id);
+    const updated = await dbGet("SELECT * FROM recipes WHERE id = ?", req.params.id);
     res.json({
       ...updated,
       ingredients: updated.ingredients ? JSON.parse(updated.ingredients) : [],
@@ -1231,15 +1246,15 @@ app.patch("/api/recipes/:id/difficulty", async (req, res) => {
 app.patch("/api/recipes/:id/image", async (req, res) => {
   const { imageAttachment } = req.body;
   try {
-    const existing = await db.get("SELECT * FROM recipes WHERE id = ?", req.params.id);
+    const existing = await dbGet("SELECT * FROM recipes WHERE id = ?", req.params.id);
     if (!existing) return res.status(404).json({ error: "Recipe not found" });
 
-    await db.run(
+    await dbRun(
       `UPDATE recipes SET imageAttachment = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`,
       [imageAttachment || null, req.params.id]
     );
 
-    const updated = await db.get("SELECT * FROM recipes WHERE id = ?", req.params.id);
+    const updated = await dbGet("SELECT * FROM recipes WHERE id = ?", req.params.id);
     res.json({
       ...updated,
       ingredients: updated.ingredients ? JSON.parse(updated.ingredients) : [],
@@ -1255,10 +1270,10 @@ app.patch("/api/recipes/:id/image", async (req, res) => {
 // Delete a recipe
 app.delete("/api/recipes/:id", async (req, res) => {
   try {
-    const existing = await db.get("SELECT * FROM recipes WHERE id = ?", req.params.id);
+    const existing = await dbGet("SELECT * FROM recipes WHERE id = ?", req.params.id);
     if (!existing) return res.status(404).json({ error: "Recipe not found" });
 
-    await db.run("DELETE FROM recipes WHERE id = ?", req.params.id);
+    await dbRun("DELETE FROM recipes WHERE id = ?", req.params.id);
     res.json({ success: true, message: "Recipe deleted successfully" });
   } catch (err) {
     console.error("Delete recipe error:", err);
