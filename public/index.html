@@ -2842,7 +2842,7 @@
         toast.classList.remove("translate-y-2", "opacity-0");
       });
 
-      const timeoutMs = type === "progress" ? 35000 : 9000;
+      const timeoutMs = type === "progress" ? 35000 : 3500;
       setTimeout(() => {
         if (toast.parentNode) {
           toast.classList.add("opacity-0", "translate-y-2");
@@ -3042,7 +3042,7 @@
       const titleInput = document.getElementById("editTitleInput");
       const title = titleInput ? titleInput.value.trim() : "";
       if (!title) {
-        return alert("Please provide a recipe title!");
+        return showBackgroundNotification("error", "Please provide a recipe title!");
       }
 
       const servings = parseInt(document.getElementById("editServingsInput").value, 10) || 4;
@@ -3073,7 +3073,7 @@
       });
 
       if (!instructions.length) {
-        return alert("Please provide at least one cooking instruction step!");
+        return showBackgroundNotification("error", "Please provide at least one cooking instruction step!");
       }
 
       // Construct updated recipe object
@@ -3116,7 +3116,7 @@
         showBackgroundNotification("success", t("editSavedSuccess"));
       } catch (err) {
         console.error("Save edited recipe failed:", err);
-        alert("Error saving edits: " + err.message);
+        showBackgroundNotification("error", "Error saving edits: " + err.message);
       }
     }
 
@@ -3571,7 +3571,7 @@
       const urlInput = document.getElementById("urlInput");
       const url = urlInput ? urlInput.value.trim() : "";
       if (!url) {
-        return alert(t("enterValidUrl"));
+        return showBackgroundNotification("error", t("enterValidUrl"));
       }
 
       let parsedUrl;
@@ -3579,7 +3579,7 @@
         parsedUrl = new URL(url);
         if (!["http:", "https:"].includes(parsedUrl.protocol)) throw new Error();
       } catch (e) {
-        return alert(t("enterValidUrl"));
+        return showBackgroundNotification("error", t("enterValidUrl"));
       }
 
       // Clear input so user is immediately ready for next action
@@ -3787,14 +3787,8 @@
       if (!activeRecipe) return;
 
       if (!activeRecipe.id) {
-        if (confirm("Discard unsaved recipe?")) {
-          closeActiveRecipe();
-        }
-        return;
-      }
-
-      const title = activeRecipe.title || "this recipe";
-      if (!confirm(`Are you sure you want to delete "${title}"? This cannot be undone.`)) {
+        closeActiveRecipe();
+        showBackgroundNotification("info", t("deleteSuccess"));
         return;
       }
 
@@ -3811,7 +3805,7 @@
 
       closeActiveRecipe();
       await updateSavedUI();
-      alert("🗑️ Recipe deleted successfully.");
+      showBackgroundNotification("info", t("deleteSuccess"));
     }
 
     /* ==========================================================================
@@ -3973,13 +3967,12 @@
         renderRecipe();
         await updateSavedUI();
       } catch (err) {
-        alert("Error processing photo: " + err.message);
+        showBackgroundNotification("error", "Error processing photo: " + err.message);
       }
     }
 
     async function removeRecipePhoto() {
       if (!activeRecipe) return;
-      if (!confirm("Are you sure you want to remove the photo from this recipe?")) return;
 
       activeRecipe.imageAttachment = null;
       if (originalRecipe) originalRecipe.imageAttachment = null;
@@ -3991,6 +3984,7 @@
 
       renderRecipe();
       await updateSavedUI();
+      showBackgroundNotification("info", "📸 Photo removed");
     }
 
     async function patchRecipeImage(id, imageAttachment) {
@@ -4013,7 +4007,7 @@
        ========================================================================== */
     async function handleParseText() {
       const rawText = document.getElementById("rawInput").value.trim();
-      if (!rawText) return alert(t("pasteFirst"));
+      if (!rawText) return showBackgroundNotification("error", t("pasteFirst"));
 
       const btn = document.getElementById("parseTextBtn");
       btn.innerHTML = `<span>${t("parsingText")}</span>`;
@@ -4043,7 +4037,7 @@
 
         loadRecipeIntoView(data);
       } catch (err) {
-        alert("Error parsing recipe: " + err.message);
+        showBackgroundNotification("error", "Error parsing recipe: " + err.message);
       } finally {
         btn.innerHTML = `<span id="parseTextBtnLabel">${t("parseText")}</span>`;
         btn.disabled = false;
@@ -4051,7 +4045,7 @@
     }
 
     async function handleParseImage() {
-      if (!selectedImageBase64) return alert(t("selectImageFirst"));
+      if (!selectedImageBase64) return showBackgroundNotification("error", t("selectImageFirst"));
 
       const btn = document.getElementById("parseImageBtn");
       btn.innerHTML = `<span>${t("parsingImage")}</span>`;
@@ -4084,7 +4078,7 @@
 
         loadRecipeIntoView(data);
       } catch (err) {
-        alert("Error analyzing image: " + err.message);
+        showBackgroundNotification("error", "Error analyzing image: " + err.message);
       } finally {
         btn.innerHTML = `<span id="parseImageBtnLabel">${t("parseImage")}</span>`;
         btn.disabled = false;
@@ -4649,7 +4643,7 @@ function sanitizeAndExtractIngredient(ing) {
        ========================================================================== */
     function enterCookMode() {
       if (!activeRecipe || !activeRecipe.instructions || !activeRecipe.instructions.length) {
-        return alert("No instructions found in recipe!");
+        return showBackgroundNotification("info", "No instructions found in recipe!");
       }
 
       isCookModeActive = true;
@@ -4746,7 +4740,7 @@ function sanitizeAndExtractIngredient(ing) {
       } else {
         checkedInstructions.add(cookStepIndex);
         renderCookMode();
-        alert(t("allStepsDone"));
+        showBackgroundNotification("success", t("allStepsDone"));
       }
     }
 
@@ -5155,7 +5149,7 @@ function sanitizeAndExtractIngredient(ing) {
         }
         await updateSavedUI();
         renderRecipe();
-        alert(t("saveSuccess"));
+        showBackgroundNotification("success", t("saveSuccess"));
       } catch (err) {
         console.warn("Backend save failed, using local storage fallback:", err);
         const recipes = JSON.parse(localStorage.getItem("recipe_deck_items") || "[]");
@@ -5171,7 +5165,7 @@ function sanitizeAndExtractIngredient(ing) {
         cachedSavedRecipes = recipes;
         await updateSavedUI();
         renderRecipe();
-        alert(t("saveSuccess"));
+        showBackgroundNotification("success", t("saveSuccess"));
       }
     }
 
@@ -5192,8 +5186,7 @@ function sanitizeAndExtractIngredient(ing) {
     }
 
     async function deleteRecipe(id, event) {
-      event.stopPropagation();
-      if (!confirm(t("deleteConfirm"))) return;
+      if (event && event.stopPropagation) event.stopPropagation();
       try {
         await fetch(`/api/recipes/${id}`, { method: "DELETE" });
       } catch (e) {
@@ -5206,7 +5199,7 @@ function sanitizeAndExtractIngredient(ing) {
         closeActiveRecipe();
       }
       await updateSavedUI();
-      alert(t("deleteSuccess"));
+      showBackgroundNotification("info", t("deleteSuccess"));
     }
 
     /* ==========================================================================
