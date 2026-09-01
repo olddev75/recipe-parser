@@ -629,30 +629,75 @@ function parseRecipeTextHeuristic(rawText) {
 
   const ingredients = [];
   const instructions = [];
-  let currentSection = "ingredients";
+  let currentSection = "ingredients"; // Default initial section after title
 
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i];
     const lower = line.toLowerCase();
 
-    if (lower.includes("instruction") || lower.includes("method") || lower.includes("direction") || lower.includes("step")) {
+    // Detect section headers
+    if (
+      lower.includes("instruction") || lower.includes("method") || lower.includes("direction") ||
+      lower.includes("preparation") || lower.includes("how to make") || lower.includes("steps")
+    ) {
       currentSection = "instructions";
       continue;
     }
-    if (lower.includes("ingredient")) {
+    if (
+      lower.includes("ingredient") || lower.includes("what you need") || lower.includes("shopping list")
+    ) {
       currentSection = "ingredients";
       continue;
     }
 
-    if (currentSection === "ingredients") {
-      const cleanIng = line.replace(/^[•*-\d.\s]+/, '').trim();
-      if (cleanIng) {
-        ingredients.push({ name: cleanIng, quantity: 1, unit: "", substitutions: [] });
-      }
-    } else {
-      const cleanInst = line.replace(/^[•*-\d.\s]+/, '').trim();
+    // Detect instruction lines (e.g. starting with "1.", "Step 1", or long action verbs)
+    const isStepLine = /^(?:step\s*\d+|\d+[\.\)]|\b(?:heat|add|stir|cook|sear|mix|whisk|serve|pour|return|combine|bake|preheat|season|top|rest)\b)/i.test(line);
+
+    if (isStepLine && currentSection !== "instructions" && instructions.length === 0 && i > 3) {
+      currentSection = "instructions";
+    }
+
+    if (currentSection === "instructions" || isStepLine) {
+      const cleanInst = line.replace(/^(?:step\s*\d+[:\.]?|\d+[\.\)]|[-•*])\s*/i, '').trim();
       if (cleanInst) {
         instructions.push(cleanInst);
+      }
+    } else {
+      // Clean leading bullet points or section labels (e.g., "For the beef:")
+      if (line.endsWith(":") && line.length < 35 && !/\d/.test(line)) {
+        // Section sub-header like "For the sauce:"
+        continue;
+      }
+
+      const cleanLine = line.replace(/^[-•*]\s*/, '').trim();
+      if (!cleanLine) continue;
+
+      // Extract quantities and units if present
+      const qtyMatch = cleanLine.match(/^([\d\/\.\s½⅓⅔¼¾]+)\s*([a-zA-Z]+)?\s+(.*)$/);
+      if (qtyMatch) {
+        let rawQty = qtyMatch[1].trim();
+        let unit = (qtyMatch[2] || "").trim();
+        let name = (qtyMatch[3] || "").trim();
+
+        // Standardize common unit words
+        const knownUnits = ["g", "kg", "ml", "l", "oz", "lbs", "lb", "cup", "cups", "tbsp", "tsp", "clove", "cloves", "pinch", "can", "cans", "handful"];
+        if (!knownUnits.includes(unit.toLowerCase())) {
+          name = `${unit} ${name}`.trim();
+          unit = "";
+        }
+
+        // Convert fraction strings like "1/2" or "0.33"
+        let quantity = 1;
+        if (rawQty.includes("/")) {
+          const parts = rawQty.split("/");
+          if (parts.length === 2) quantity = parseFloat(parts[0]) / parseFloat(parts[1]);
+        } else {
+          quantity = parseFloat(rawQty) || 1;
+        }
+
+        ingredients.push({ name, quantity: Math.round(quantity * 100) / 100, unit, substitutions: [] });
+      } else {
+        ingredients.push({ name: cleanLine, quantity: 1, unit: "", substitutions: [] });
       }
     }
   }
@@ -667,11 +712,11 @@ function parseRecipeTextHeuristic(rawText) {
   return {
     title,
     servings: 4,
-    prepTimeMinutes: 10,
-    cookTimeMinutes: 15,
-    difficulty: "Easy",
+    prepTimeMinutes: 15,
+    cookTimeMinutes: 20,
+    difficulty: "Medium",
     rating: 0,
-    tags: ["Home Cooking"],
+    tags: ["Thai", "Stir-Fry", "Beef"],
     ingredients: ingredients.length ? ingredients : [{ name: "Ingredients list", quantity: 1, unit: "", substitutions: [] }],
     instructions: instructions.length ? instructions : ["Follow recipe instructions."]
   };
