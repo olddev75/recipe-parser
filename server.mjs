@@ -216,11 +216,11 @@ function sanitizeAndExtractIngredient(ing) {
 }
 
 
-// Initialize @libsql/client (Turso Cloud or fallback to local SQLite)
-const tursoUrl = process.env.TURSO_DATABASE_URL || `file:${dbPath}`;
-const tursoAuthToken = process.env.TURSO_AUTH_TOKEN || undefined;
+// Initialize @libsql/client (Turso Cloud with automatic local fallback)
+let tursoUrl = process.env.TURSO_DATABASE_URL || `file:${dbPath}`;
+let tursoAuthToken = process.env.TURSO_AUTH_TOKEN || undefined;
 
-const db = createClient({
+let db = createClient({
   url: tursoUrl,
   authToken: tursoAuthToken
 });
@@ -402,7 +402,20 @@ async function initDb() {
 
   console.log(`📦 Database initialized (${tursoUrl.startsWith("libsql:") ? "Turso Cloud" : "Local SQLite file"})`);
 }
-await initDb();
+
+try {
+  await initDb();
+} catch (err) {
+  if (tursoUrl.startsWith("libsql:") || tursoUrl.startsWith("https:")) {
+    console.warn(`[Database] Failed to connect to remote Turso (${err.message}). Falling back to local SQLite at ${dbPath}`);
+    tursoUrl = `file:${dbPath}`;
+    tursoAuthToken = undefined;
+    db = createClient({ url: tursoUrl });
+    await initDb();
+  } else {
+    throw err;
+  }
+}
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
