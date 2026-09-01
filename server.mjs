@@ -250,6 +250,8 @@ async function initDb() {
       email TEXT UNIQUE NOT NULL,
       passwordHash TEXT NOT NULL,
       displayName TEXT NOT NULL,
+      bio TEXT,
+      avatar TEXT,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
@@ -296,6 +298,11 @@ async function initDb() {
     if (!cols.includes("isFavourite")) await db.execute("ALTER TABLE recipes ADD COLUMN isFavourite INTEGER DEFAULT 0;");
     if (!cols.includes("userId")) await db.execute("ALTER TABLE recipes ADD COLUMN userId TEXT;");
     if (!cols.includes("isPublic")) await db.execute("ALTER TABLE recipes ADD COLUMN isPublic INTEGER DEFAULT 1;");
+
+    const userTableInfo = await db.execute("PRAGMA table_info(users)");
+    const userCols = userTableInfo.rows.map(r => r.name);
+    if (!userCols.includes("bio")) await db.execute("ALTER TABLE users ADD COLUMN bio TEXT;");
+    if (!userCols.includes("avatar")) await db.execute("ALTER TABLE users ADD COLUMN avatar TEXT;");
   } catch (e) {}
 
   // Seed default starter recipes if database is fresh/empty
@@ -1037,17 +1044,87 @@ app.post("/api/auth/logout", (req, res) => {
 });
 
 // GET /api/auth/me
-app.get("/api/auth/me", (req, res) => {
+app.get("/api/auth/me", async (req, res) => {
   if (!req.user) {
     return res.json({ user: null });
   }
-  res.json({
-    user: {
-      id: req.user.id,
-      email: req.user.email,
-      displayName: req.user.displayName
+  try {
+    const user = await dbGet("SELECT id, email, displayName, bio, avatar, createdAt FROM users WHERE id = ?", [req.user.id]);
+    if (!user) return res.json({ user: null });
+    res.json({ user });
+  } catch (err) {
+    res.json({
+      user: {
+        id: req.user.id,
+        email: req.user.email,
+        displayName: req.user.displayName
+      }
+    });
+  }
+});
+
+// PUT /api/auth/profile (Update displayName, bio, avatar)
+app.put("/api/auth/profile", requireAuth, async (req, res) => {
+  try {
+    const { displayName, bio, avatar } = req.body || {};
+    if (!displayName || !displayName.trim()) {
+      return res.status(400).json({ error: "Display name is required" });
     }
-  });
+    const cleanName = displayName.trim();
+    const cleanBio = typeof bio === "string" ? bio.trim().slice(0, 500) : null;
+    const cleanAvatar = typeof avatar === "string" ? avatar : null;
+
+    await dbRun(
+      "UPDATE users SET displayName = ?, bio = ?, avatar = ? WHERE id = ?",
+      [cleanName, cleanBio, cleanAvatar, req.user.id]
+    );
+
+    // Issue updated token
+    const token = jwt.sign(
+      { id: req.user.id, email: req.user.email, displayName: cleanName },
+      JWT_SECRET,
+      { expiresIn: "30d" }
+    );
+    setAuthCookie(res, token);
+
+    const updatedUser = await dbGet("SELECT id, email, displayName, bio, avatar, createdAt FROM users WHERE id = ?", [req.user.id]);
+    res.json({ success: true, user: updatedUser });
+  } catch (err) {
+    console.error("Update profile error:", err);
+    res.status(500).json({ error: "Failed to update profile" });
+  }
+});
+
+// PUT /api/auth/password (Change password)
+app.put("/api/auth/password", requireAuth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: "Current password and new password are required" });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: "New password must be at least 6 characters" });
+    }
+
+    const user = await dbGet("SELECT * FROM users WHERE id = ?", [req.user.id]);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const match = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!match) {
+      return res.status(400).json({ error: "Incorrect current password" });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const newHash = await bcrypt.hash(newPassword, salt);
+
+    await dbRun("UPDATE users SET passwordHash = ? WHERE id = ?", [newHash, req.user.id]);
+    res.json({ success: true, message: "Password updated successfully" });
+  } catch (err) {
+    console.error("Change password error:", err);
+    res.status(500).json({ error: "Failed to change password" });
+  }
 });
 
 /* ==========================================================================
@@ -1175,13 +1252,13 @@ app.post("/api/recipes/bulk-import", async (req, res) => {
   }
 });
 
-// Create a new recipe in SQLite
-app.post("/api/recipes", async (req, res) => {
+// Create a new recipe in SQLite (Requires Authentication)
+app.post("/api/recipes", requireAuth, async (req, res) => {
   const validated = selfCheckAndVerifyRecipe(req.body);
   const { title, servings, prepTimeMinutes, cookTimeMinutes, ingredients, instructions, tags, rating, difficulty, isFavourite, imageAttachment } = validated;
   if (!title) return res.status(400).json({ error: "Title is required" });
 
-  const currentUserId = req.user?.id || null;
+  const currentUserId = req.user.id;
   const isPublic = req.body.isPublic !== undefined ? (req.body.isPublic ? 1 : 0) : 1;
 
   try {

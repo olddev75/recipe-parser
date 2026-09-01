@@ -121,9 +121,14 @@
             <span>👤</span>
             <span id="authLoginBtnLabel">Sign In</span>
           </button>
-          <div id="userProfileBadge" class="hidden flex items-center gap-2 bg-slate-800/90 border border-slate-700 rounded-lg px-2.5 py-1 text-xs shadow-sm">
-            <span class="text-amber-400">👤</span>
-            <span id="userDisplayNameLabel" class="font-semibold text-slate-200 truncate max-w-[100px]">User</span>
+          <div id="userProfileBadge" class="hidden flex items-center gap-2 bg-slate-800/90 border border-slate-700 hover:border-amber-500/50 rounded-lg px-2.5 py-1 text-xs shadow-sm transition">
+            <button onclick="openProfileModal()" class="flex items-center gap-2 text-left cursor-pointer focus:outline-none" title="Edit Profile & Password">
+              <div id="userHeaderAvatarContainer" class="w-6 h-6 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center overflow-hidden shrink-0">
+                <span id="userHeaderAvatarIcon" class="text-amber-400 text-xs">👤</span>
+                <img id="userHeaderAvatarImg" class="hidden w-full h-full object-cover" alt="">
+              </div>
+              <span id="userDisplayNameLabel" class="font-semibold text-slate-200 hover:text-amber-300 truncate max-w-[100px]">User</span>
+            </button>
             <button onclick="handleLogout()" class="text-slate-400 hover:text-rose-400 font-bold ml-1 p-0.5" title="Sign Out">✕</button>
           </div>
         </div>
@@ -925,6 +930,99 @@
           Sign In
         </button>
       </form>
+  <!-- User Profile & Change Password Modal -->
+  <div id="profileModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm transition-all duration-200">
+    <div class="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <!-- Modal Header -->
+      <div class="px-5 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-800/60">
+        <div class="flex items-center gap-2.5">
+          <div id="profileModalAvatarPreview" class="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center overflow-hidden shrink-0">
+            <span id="profileModalAvatarIcon" class="text-amber-400 text-sm">👤</span>
+            <img id="profileModalAvatarImg" class="hidden w-full h-full object-cover" alt="">
+          </div>
+          <div>
+            <h2 class="text-sm font-bold text-white">Account Settings</h2>
+            <p id="profileModalEmail" class="text-[11px] text-slate-400">Manage your profile & password</p>
+          </div>
+        </div>
+        <button onclick="closeProfileModal()" class="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 text-xs cursor-pointer transition">✕</button>
+      </div>
+
+      <!-- Modal Tabs: Profile Info vs Change Password -->
+      <div class="flex border-b border-slate-800 text-xs font-semibold bg-slate-950/40">
+        <button id="profileTabInfoBtn" onclick="switchProfileTab('info')" class="flex-1 py-2.5 border-b-2 border-amber-500 text-amber-400 font-bold cursor-pointer text-center">Profile Information</button>
+        <button id="profileTabPasswordBtn" onclick="switchProfileTab('password')" class="flex-1 py-2.5 text-slate-400 hover:text-white cursor-pointer text-center">Change Password</button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-4 text-xs">
+        <!-- Profile Info Form -->
+        <form id="profileInfoForm" onsubmit="handleProfileSave(event)" class="space-y-3.5">
+          <!-- Avatar Upload -->
+          <div class="space-y-1.5">
+            <label class="block font-semibold text-slate-300">Avatar / Profile Picture</label>
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-full bg-slate-950 border border-slate-700 flex items-center justify-center overflow-hidden shrink-0">
+                <span id="profileAvatarCurrentIcon" class="text-xl text-slate-500">👤</span>
+                <img id="profileAvatarCurrentImg" class="hidden w-full h-full object-cover" alt="">
+              </div>
+              <div class="space-y-1">
+                <input type="file" id="profileAvatarFileInput" accept="image/*" class="hidden" onchange="handleAvatarFileSelected(event)">
+                <div class="flex gap-2">
+                  <button type="button" onclick="document.getElementById('profileAvatarFileInput').click()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold cursor-pointer">
+                    Upload Photo
+                  </button>
+                  <button type="button" onclick="removeAvatarImage()" id="removeAvatarBtn" class="hidden px-2.5 py-1.5 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-700/60 rounded-lg text-xs font-semibold cursor-pointer">
+                    Remove
+                  </button>
+                </div>
+                <p class="text-[10px] text-slate-500">PNG, JPG, or WebP (max 2MB)</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Display Name -->
+          <div class="space-y-1">
+            <label class="block font-semibold text-slate-300">Display Name</label>
+            <input type="text" id="profileDisplayNameInput" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-amber-500">
+          </div>
+
+          <!-- Bio / Personal Note -->
+          <div class="space-y-1">
+            <label class="block font-semibold text-slate-300">Bio / Kitchen Note</label>
+            <textarea id="profileBioInput" rows="2" placeholder="Home cook & noodle enthusiast..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-amber-500 resize-none"></textarea>
+          </div>
+
+          <div id="profileInfoMsg" class="hidden p-2 rounded-lg text-[11px]"></div>
+
+          <button type="submit" id="profileInfoSaveBtn" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-lg transition shadow cursor-pointer text-xs">
+            Save Profile Changes
+          </button>
+        </form>
+
+        <!-- Change Password Form -->
+        <form id="profilePasswordForm" onsubmit="handlePasswordChange(event)" class="hidden space-y-3.5">
+          <div class="space-y-1">
+            <label class="block font-semibold text-slate-300">Current Password</label>
+            <input type="password" id="currentPasswordInput" required minlength="6" placeholder="••••••••" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-amber-500">
+          </div>
+
+          <div class="space-y-1">
+            <label class="block font-semibold text-slate-300">New Password</label>
+            <input type="password" id="newPasswordInput" required minlength="6" placeholder="••••••••" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-amber-500">
+          </div>
+
+          <div class="space-y-1">
+            <label class="block font-semibold text-slate-300">Confirm New Password</label>
+            <input type="password" id="confirmPasswordInput" required minlength="6" placeholder="••••••••" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-amber-500">
+          </div>
+
+          <div id="profilePasswordMsg" class="hidden p-2 rounded-lg text-[11px]"></div>
+
+          <button type="submit" id="profilePasswordSaveBtn" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-lg transition shadow cursor-pointer text-xs">
+            Update Password
+          </button>
+        </form>
+      </div>
     </div>
   </div>
 
@@ -2955,10 +3053,23 @@
       const commentForm = document.getElementById("commentFormWrapper");
       const commentPrompt = document.getElementById("commentLoginPrompt");
 
+      const headerIcon = document.getElementById("userHeaderAvatarIcon");
+      const headerImg = document.getElementById("userHeaderAvatarImg");
+
       if (currentUser) {
         if (loginBtn) loginBtn.classList.add("hidden");
         if (userBadge) userBadge.classList.remove("hidden");
         if (displayNameLabel) displayNameLabel.innerText = currentUser.displayName || currentUser.email;
+
+        if (currentUser.avatar && headerImg && headerIcon) {
+          headerImg.src = currentUser.avatar;
+          headerImg.classList.remove("hidden");
+          headerIcon.classList.add("hidden");
+        } else if (headerImg && headerIcon) {
+          headerImg.classList.add("hidden");
+          headerIcon.classList.remove("hidden");
+        }
+
         if (commentForm) commentForm.classList.remove("hidden");
         if (commentPrompt) commentPrompt.classList.add("hidden");
       } else {
@@ -3072,6 +3183,211 @@
         }
       } catch (err) {
         console.error("Logout error:", err);
+      }
+    }
+
+    /* ==========================================================================
+       USER PROFILE & PASSWORD MANAGEMENT
+       ========================================================================== */
+
+    let profileAvatarBase64 = null;
+
+    function openProfileModal() {
+      if (!currentUser) return openAuthModal('login');
+
+      const modal = document.getElementById("profileModal");
+      const emailEl = document.getElementById("profileModalEmail");
+      const nameInput = document.getElementById("profileDisplayNameInput");
+      const bioInput = document.getElementById("profileBioInput");
+
+      const iconEl = document.getElementById("profileModalAvatarIcon");
+      const imgEl = document.getElementById("profileModalAvatarImg");
+      const currentIconEl = document.getElementById("profileAvatarCurrentIcon");
+      const currentImgEl = document.getElementById("profileAvatarCurrentImg");
+      const removeBtn = document.getElementById("removeAvatarBtn");
+
+      if (emailEl) emailEl.innerText = currentUser.email || "";
+      if (nameInput) nameInput.value = currentUser.displayName || "";
+      if (bioInput) bioInput.value = currentUser.bio || "";
+
+      profileAvatarBase64 = currentUser.avatar || null;
+
+      if (profileAvatarBase64) {
+        if (imgEl) { imgEl.src = profileAvatarBase64; imgEl.classList.remove("hidden"); }
+        if (iconEl) iconEl.classList.add("hidden");
+        if (currentImgEl) { currentImgEl.src = profileAvatarBase64; currentImgEl.classList.remove("hidden"); }
+        if (currentIconEl) currentIconEl.classList.add("hidden");
+        if (removeBtn) removeBtn.classList.remove("hidden");
+      } else {
+        if (imgEl) imgEl.classList.add("hidden");
+        if (iconEl) iconEl.classList.remove("hidden");
+        if (currentImgEl) currentImgEl.classList.add("hidden");
+        if (currentIconEl) currentIconEl.classList.remove("hidden");
+        if (removeBtn) removeBtn.classList.add("hidden");
+      }
+
+      const infoMsg = document.getElementById("profileInfoMsg");
+      const passMsg = document.getElementById("profilePasswordMsg");
+      if (infoMsg) infoMsg.classList.add("hidden");
+      if (passMsg) passMsg.classList.add("hidden");
+
+      switchProfileTab('info');
+      if (modal) modal.classList.remove("hidden");
+    }
+
+    function closeProfileModal() {
+      const modal = document.getElementById("profileModal");
+      if (modal) modal.classList.add("hidden");
+    }
+
+    function switchProfileTab(tab) {
+      const infoTabBtn = document.getElementById("profileTabInfoBtn");
+      const passTabBtn = document.getElementById("profileTabPasswordBtn");
+      const infoForm = document.getElementById("profileInfoForm");
+      const passForm = document.getElementById("profilePasswordForm");
+
+      if (tab === 'password') {
+        if (infoTabBtn) infoTabBtn.className = "flex-1 py-2.5 text-slate-400 hover:text-white cursor-pointer text-center";
+        if (passTabBtn) passTabBtn.className = "flex-1 py-2.5 border-b-2 border-amber-500 text-amber-400 font-bold cursor-pointer text-center";
+        if (infoForm) infoForm.classList.add("hidden");
+        if (passForm) passForm.classList.remove("hidden");
+      } else {
+        if (infoTabBtn) infoTabBtn.className = "flex-1 py-2.5 border-b-2 border-amber-500 text-amber-400 font-bold cursor-pointer text-center";
+        if (passTabBtn) passTabBtn.className = "flex-1 py-2.5 text-slate-400 hover:text-white cursor-pointer text-center";
+        if (infoForm) infoForm.classList.remove("hidden");
+        if (passForm) passForm.classList.add("hidden");
+      }
+    }
+
+    function handleAvatarFileSelected(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      if (file.size > 2 * 1024 * 1024) {
+        return showBackgroundNotification("error", "Avatar image must be under 2MB!");
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        profileAvatarBase64 = event.target.result;
+        const imgEl = document.getElementById("profileModalAvatarImg");
+        const iconEl = document.getElementById("profileModalAvatarIcon");
+        const currentImgEl = document.getElementById("profileAvatarCurrentImg");
+        const currentIconEl = document.getElementById("profileAvatarCurrentIcon");
+        const removeBtn = document.getElementById("removeAvatarBtn");
+
+        if (imgEl) { imgEl.src = profileAvatarBase64; imgEl.classList.remove("hidden"); }
+        if (iconEl) iconEl.classList.add("hidden");
+        if (currentImgEl) { currentImgEl.src = profileAvatarBase64; currentImgEl.classList.remove("hidden"); }
+        if (currentIconEl) currentIconEl.classList.add("hidden");
+        if (removeBtn) removeBtn.classList.remove("hidden");
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removeAvatarImage() {
+      profileAvatarBase64 = null;
+      const imgEl = document.getElementById("profileModalAvatarImg");
+      const iconEl = document.getElementById("profileModalAvatarIcon");
+      const currentImgEl = document.getElementById("profileAvatarCurrentImg");
+      const currentIconEl = document.getElementById("profileAvatarCurrentIcon");
+      const removeBtn = document.getElementById("removeAvatarBtn");
+
+      if (imgEl) imgEl.classList.add("hidden");
+      if (iconEl) iconEl.classList.remove("hidden");
+      if (currentImgEl) currentImgEl.classList.add("hidden");
+      if (currentIconEl) currentIconEl.classList.remove("hidden");
+      if (removeBtn) removeBtn.classList.add("hidden");
+    }
+
+    async function handleProfileSave(e) {
+      e.preventDefault();
+      const displayName = document.getElementById("profileDisplayNameInput").value.trim();
+      const bio = document.getElementById("profileBioInput").value.trim();
+      const msgBox = document.getElementById("profileInfoMsg");
+
+      if (msgBox) msgBox.classList.add("hidden");
+
+      try {
+        const res = await fetch("/api/auth/profile", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ displayName, bio, avatar: profileAvatarBase64 })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          if (msgBox) {
+            msgBox.className = "p-2 rounded-lg bg-rose-950/60 border border-rose-700/60 text-rose-300 text-[11px]";
+            msgBox.innerText = data.error || "Failed to update profile";
+            msgBox.classList.remove("hidden");
+          }
+          return;
+        }
+
+        currentUser = data.user;
+        updateAuthUI();
+        closeProfileModal();
+        showBackgroundNotification("success", "Profile updated successfully!");
+      } catch (err) {
+        if (msgBox) {
+          msgBox.className = "p-2 rounded-lg bg-rose-950/60 border border-rose-700/60 text-rose-300 text-[11px]";
+          msgBox.innerText = "Error: " + err.message;
+          msgBox.classList.remove("hidden");
+        }
+      }
+    }
+
+    async function handlePasswordChange(e) {
+      e.preventDefault();
+      const currentPassword = document.getElementById("currentPasswordInput").value;
+      const newPassword = document.getElementById("newPasswordInput").value;
+      const confirmPassword = document.getElementById("confirmPasswordInput").value;
+      const msgBox = document.getElementById("profilePasswordMsg");
+
+      if (msgBox) msgBox.classList.add("hidden");
+
+      if (newPassword !== confirmPassword) {
+        if (msgBox) {
+          msgBox.className = "p-2 rounded-lg bg-rose-950/60 border border-rose-700/60 text-rose-300 text-[11px]";
+          msgBox.innerText = "New passwords do not match!";
+          msgBox.classList.remove("hidden");
+        }
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/auth/password", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ currentPassword, newPassword })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          if (msgBox) {
+            msgBox.className = "p-2 rounded-lg bg-rose-950/60 border border-rose-700/60 text-rose-300 text-[11px]";
+            msgBox.innerText = data.error || "Failed to change password";
+            msgBox.classList.remove("hidden");
+          }
+          return;
+        }
+
+        document.getElementById("currentPasswordInput").value = "";
+        document.getElementById("newPasswordInput").value = "";
+        document.getElementById("confirmPasswordInput").value = "";
+
+        if (msgBox) {
+          msgBox.className = "p-2 rounded-lg bg-emerald-950/60 border border-emerald-700/60 text-emerald-300 text-[11px]";
+          msgBox.innerText = "Password updated successfully!";
+          msgBox.classList.remove("hidden");
+        }
+        showBackgroundNotification("success", "Password changed!");
+      } catch (err) {
+        if (msgBox) {
+          msgBox.className = "p-2 rounded-lg bg-rose-950/60 border border-rose-700/60 text-rose-300 text-[11px]";
+          msgBox.innerText = "Error: " + err.message;
+          msgBox.classList.remove("hidden");
+        }
       }
     }
 
@@ -4021,6 +4337,10 @@
     }
 
     async function handleScrapeUrl() {
+      if (!currentUser) {
+        showBackgroundNotification("warning", "Please sign in to add and scrape new recipes!");
+        return openAuthModal("login");
+      }
       const urlInput = document.getElementById("urlInput");
       const url = urlInput ? urlInput.value.trim() : "";
       if (!url) {
@@ -4459,6 +4779,10 @@
        RECIPE PARSING & INGESTION
        ========================================================================== */
     async function handleParseText() {
+      if (!currentUser) {
+        showBackgroundNotification("warning", "Please sign in to add and parse new recipes!");
+        return openAuthModal("login");
+      }
       const rawText = document.getElementById("rawInput").value.trim();
       if (!rawText) return showBackgroundNotification("error", t("pasteFirst"));
 
@@ -4498,6 +4822,10 @@
     }
 
     async function handleParseImage() {
+      if (!currentUser) {
+        showBackgroundNotification("warning", "Please sign in to add and parse new recipes!");
+        return openAuthModal("login");
+      }
       if (!selectedImageBase64) return showBackgroundNotification("error", t("selectImageFirst"));
 
       const btn = document.getElementById("parseImageBtn");
@@ -5573,6 +5901,10 @@ function sanitizeAndExtractIngredient(ing) {
     }
 
     async function saveCurrentRecipe() {
+      if (!currentUser) {
+        showBackgroundNotification("warning", "Please sign in to save recipes to your library!");
+        return openAuthModal("login");
+      }
       if (!activeRecipe) return;
       // When saving, persist base record with original title/ingredients
       const recipeToSave = originalRecipe || activeRecipe;
