@@ -193,20 +193,55 @@ const recipeSchema = {
   required: ["title", "ingredients", "instructions"]
 };
 
+// Helper to enforce timeouts on async promises
+function promiseWithTimeout(promise, ms, timeoutErrorMsg = "Operation timed out") {
+  let timer;
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(timeoutErrorMsg)), ms);
+  });
+  return Promise.race([
+    promise.then(res => { clearTimeout(timer); return res; }),
+    timeoutPromise
+  ]);
+}
+
+// Resilient Multi-Model Gemini Generator with Auto-Fallback
+async function generateRecipeContent(contents, config = {}) {
+  const models = ["gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.7-flash", "gemini-3.5-flash"];
+  let lastErr = null;
+  for (const model of models) {
+    try {
+      const response = await promiseWithTimeout(
+        ai.models.generateContent({
+          model,
+          contents,
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: recipeSchema,
+            ...config
+          }
+        }),
+        25000,
+        `Gemini model ${model} timed out after 25s`
+      );
+      return response;
+    } catch (err) {
+      console.warn(`[Gemini] Model ${model} error: ${err.message?.slice(0, 120)}. Trying fallback model...`);
+      lastErr = err;
+    }
+  }
+  throw lastErr || new Error("Failed to parse recipe with all Gemini models");
+}
+
 // Text Parser Endpoint
 app.post("/api/parse", async (req, res) => {
   const { rawText } = req.body;
   if (!rawText) return res.status(400).json({ error: "No text provided" });
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
-      contents: `Extract this recipe into structured JSON with standard measurements (metric preferred), estimated cook/prep times, regional/ingredient substitutions, and clean normalized categorization tags (covering protein, diet/nutrition, and cuisine/meal style):\n\n${rawText}`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: recipeSchema,
-      }
-    });
+    const response = await generateRecipeContent(
+      `Extract this recipe into structured JSON with standard measurements (metric preferred), estimated cook/prep times, regional/ingredient substitutions, and clean normalized categorization tags (covering protein, diet/nutrition, and cuisine/meal style):\n\n${rawText}`
+    );
 
     const parsed = JSON.parse(response.text);
     if (!parsed.tags) parsed.tags = [];
@@ -225,22 +260,15 @@ app.post("/api/parse-image", async (req, res) => {
   try {
     const promptText = "Extract and OCR the complete recipe from this screenshot or photo into structured JSON with standard measurements (metric preferred), estimated cook/prep times, common ingredient/brand substitutions, and clean normalized categorization tags (protein, diet/nutrition, cuisine/style).";
     
-    const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
-      contents: [
-        {
-          inlineData: {
-            data: imageBase64,
-            mimeType: mimeType || "image/jpeg"
-          }
-        },
-        promptText
-      ],
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: recipeSchema,
-      }
-    });
+    const response = await generateRecipeContent([
+      {
+        inlineData: {
+          data: imageBase64,
+          mimeType: mimeType || "image/jpeg"
+        }
+      },
+      promptText
+    ]);
 
     const parsed = JSON.parse(response.text);
     if (!parsed.tags) parsed.tags = [];
@@ -420,7 +448,16 @@ function parseDirectJsonLd(jsonLd) {
 
 // Helper to clean HTML text for fallback Gemini extraction
 function cleanHtmlText(html) {
-  return html
+  if (!html || typeof html !== "string") return "";
+
+  // Prioritize article, main, or recipe container if present
+  let targetHtml = html;
+  const mainMatch = html.match(/<(?:main|article|div[^>]*class=["'][^"']*(?:recipe|entry-content|post-content)[^"']*["'])[\s\S]*?<\/(?:main|article|div)>/i);
+  if (mainMatch && mainMatch[0] && mainMatch[0].length > 200) {
+    targetHtml = mainMatch[0];
+  }
+
+  return targetHtml
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, " ")
     .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, " ")
     .replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, " ")
@@ -428,6 +465,7 @@ function cleanHtmlText(html) {
     .replace(/<header\b[^<]*(?:(?!<\/header>)<[^<]*)*<\/header>/gi, " ")
     .replace(/<footer\b[^<]*(?:(?!<\/footer>)<[^<]*)*<\/footer>/gi, " ")
     .replace(/<nav\b[^<]*(?:(?!<\/nav>)<[^<]*)*<\/nav>/gi, " ")
+    .replace(/<aside\b[^<]*(?:(?!<\/aside>)<[^<]*)*<\/aside>/gi, " ")
     .replace(/<!--[\s\S]*?-->/g, " ")
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;/gi, " ")
@@ -438,7 +476,7 @@ function cleanHtmlText(html) {
     .replace(/&#39;/gi, "'")
     .replace(/\s+/g, " ")
     .trim()
-    .slice(0, 40000); // Send first 40k chars of clean text
+    .slice(0, 10000); // 10k chars is fast, concise, and captures full recipe
 }
 
 // Web URL Scraper & Recipe Extractor Endpoint
@@ -484,35 +522,9 @@ app.post("/api/scrape", async (req, res) => {
 
     if (jsonLdRecipe) {
       console.log(`[Scraper] Found schema.org/Recipe JSON-LD for ${parsedUrl.hostname}`);
-      
-      // Extract image URL if available
-      if (jsonLdRecipe.image) {
-        if (typeof jsonLdRecipe.image === "string") {
-          imageUrl = jsonLdRecipe.image;
-        } else if (Array.isArray(jsonLdRecipe.image) && jsonLdRecipe.image.length > 0) {
-          imageUrl = typeof jsonLdRecipe.image[0] === "string" ? jsonLdRecipe.image[0] : jsonLdRecipe.image[0]?.url;
-        } else if (typeof jsonLdRecipe.image === "object" && jsonLdRecipe.image.url) {
-          imageUrl = jsonLdRecipe.image.url;
-        }
-      }
-
-      // Try Gemini normalization first for superior categorized tags and units; fall back to direct JSON-LD parser
-      try {
-        const geminiPrompt = `Convert and normalize this schema.org/Recipe JSON-LD data into structured recipe JSON with standard measurements (metric preferred), clean categorized tags (protein, diet/nutrition, cuisine/style), and ingredient substitutions:\n\n${JSON.stringify(jsonLdRecipe, null, 2)}`;
-
-        const aiResponse = await ai.models.generateContent({
-          model: "gemini-3.6-flash",
-          contents: geminiPrompt,
-          config: {
-            responseMimeType: "application/json",
-            responseSchema: recipeSchema,
-          }
-        });
-
-        parsedRecipe = JSON.parse(aiResponse.text);
-      } catch (geminiErr) {
-        console.warn("[Scraper] Gemini JSON-LD normalization fallback to direct parser:", geminiErr.message);
-        parsedRecipe = parseDirectJsonLd(jsonLdRecipe);
+      parsedRecipe = parseDirectJsonLd(jsonLdRecipe);
+      if (imageUrl && !parsedRecipe.imageAttachment) {
+        parsedRecipe.imageAttachment = imageUrl;
       }
     } else {
       console.log(`[Scraper] No JSON-LD found. Falling back to Gemini HTML text parsing for ${parsedUrl.hostname}`);
@@ -524,15 +536,7 @@ app.post("/api/scrape", async (req, res) => {
 
       const geminiPrompt = `Extract the complete recipe from this webpage text into structured JSON with standard measurements (metric preferred), estimated cook/prep times, ingredient substitutions, and clean normalized categorization tags (covering protein, diet/nutrition, and cuisine/meal style):\n\n${cleanText}`;
 
-      const aiResponse = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
-        contents: geminiPrompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: recipeSchema,
-        }
-      });
-
+      const aiResponse = await generateRecipeContent(geminiPrompt);
       parsedRecipe = JSON.parse(aiResponse.text);
     }
 
