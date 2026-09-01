@@ -253,55 +253,7 @@ app.post("/api/parse-image", async (req, res) => {
   }
 });
 
-// Recipe Translation Endpoint
-app.post("/api/translate", async (req, res) => {
-  const { recipe, targetLanguage } = req.body;
-  if (!recipe || !targetLanguage) {
-    return res.status(400).json({ error: "Recipe and targetLanguage are required" });
-  }
 
-  try {
-    const prompt = `You are an expert culinary chef and multilingual translator.
-Translate the following recipe accurately into ${targetLanguage}.
-
-Translation Guidelines:
-1. Accurately translate the recipe title, ingredient names, measurement units (using appropriate standard culinary terms for ${targetLanguage}), ingredient substitutions, instructions, and tags.
-2. Ensure natural, idiomatic culinary grammar and kitchen phrasing native to ${targetLanguage} rather than robotic or word-for-word translation.
-3. Keep all numeric quantities, proportions, and cook/prep times strictly accurate.
-4. Output standard structured JSON conforming to the recipe schema.
-
-Recipe to translate:
-${JSON.stringify({
-  title: recipe.title,
-  servings: recipe.servings,
-  prepTimeMinutes: recipe.prepTimeMinutes,
-  cookTimeMinutes: recipe.cookTimeMinutes,
-  tags: recipe.tags || [],
-  ingredients: recipe.ingredients,
-  instructions: recipe.instructions
-}, null, 2)}`;
-
-    const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: recipeSchema,
-      }
-    });
-
-    const translated = JSON.parse(response.text);
-    // Preserve attachment and ID from original recipe
-    if (recipe.imageAttachment) translated.imageAttachment = recipe.imageAttachment;
-    if (recipe.id) translated.id = recipe.id;
-    if (!translated.tags) translated.tags = [];
-
-    res.json(translated);
-  } catch (err) {
-    console.error("Translation API error:", err);
-    res.status(500).json({ error: "Failed to translate recipe: " + err.message });
-  }
-});
 
 /* ==========================================================================
    SQLite RECIPE STORAGE & IMAGE ATTACHMENT API

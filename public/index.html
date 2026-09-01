@@ -32,18 +32,35 @@
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen">
   <div class="max-w-5xl mx-auto px-4 py-8">
-    <header class="flex justify-between items-center mb-8 border-b border-slate-800 pb-4 no-print">
+    <header class="flex flex-wrap justify-between items-center gap-4 mb-8 border-b border-slate-800 pb-4 no-print">
       <div>
         <h1 class="text-2xl font-bold tracking-tight text-amber-400">📖 Recipe Deck</h1>
-        <p class="text-sm text-slate-400">Clean extraction, live unit conversions, photo attachments, translations, tags, and interactive Cook Mode</p>
+        <p id="appSubtitleText" class="text-sm text-slate-400">Clean extraction, live unit conversions, photo attachments, tags, and interactive Cook Mode</p>
       </div>
-      <div class="flex items-center gap-3">
-        <button onclick="addNextRecipe()" class="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow">
+      <div class="flex items-center gap-3 flex-wrap">
+        <!-- Site Language Selector -->
+        <div class="flex items-center bg-slate-800/90 border border-slate-700 rounded-lg px-2.5 py-1.5 shadow-sm">
+          <span class="text-xs text-slate-400 mr-1.5">🌐</span>
+          <select id="siteLanguageSelect" onchange="changeSiteLanguage(this.value)" class="bg-transparent text-slate-200 text-xs font-semibold focus:outline-none cursor-pointer pr-1">
+            <option value="en">English (EN)</option>
+            <option value="es">Español (ES)</option>
+            <option value="fr">Français (FR)</option>
+            <option value="de">Deutsch (DE)</option>
+            <option value="it">Italiano (IT)</option>
+            <option value="th">ไทย (TH)</option>
+            <option value="ja">日本語 (JA)</option>
+            <option value="vi">Tiếng Việt (VI)</option>
+            <option value="zh">中文 (ZH)</option>
+            <option value="pt">Português (PT)</option>
+          </select>
+        </div>
+
+        <button onclick="addNextRecipe()" id="headerAddRecipeBtn" class="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow">
           <span>➕</span>
-          <span>Add Recipe</span>
+          <span id="headerAddRecipeLabel">Add Recipe</span>
         </button>
         <div class="text-sm font-medium bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
-          Saved: <span id="savedCount" class="text-amber-400 font-bold">0</span>
+          <span id="savedCountPrefix">Saved</span>: <span id="savedCount" class="text-amber-400 font-bold">0</span>
         </div>
       </div>
     </header>
@@ -63,7 +80,7 @@
           <div id="textMode">
             <textarea id="rawInput" rows="6" placeholder="Paste full post, Instagram caption, or ingredients list here..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-200 resize-y mb-3"></textarea>
             <button id="parseTextBtn" onclick="handleParseText()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-lg transition flex justify-center items-center gap-2">
-              <span>✨ Format & Parse Text</span>
+              <span id="parseTextBtnLabel">✨ Format & Parse Text</span>
             </button>
           </div>
 
@@ -76,12 +93,12 @@
               </div>
               <div id="dropPrompt">
                 <span class="text-3xl block mb-2">📸</span>
-                <p class="text-xs font-semibold text-slate-200">Click or drag screenshot here</p>
-                <p class="text-[11px] text-slate-400 mt-1">JPEG, PNG, WebP supported</p>
+                <p id="dropPromptTitle" class="text-xs font-semibold text-slate-200">Click or drag screenshot here</p>
+                <p id="dropPromptSub" class="text-[11px] text-slate-400 mt-1">JPEG, PNG, WebP supported</p>
               </div>
             </div>
             <button id="parseImageBtn" onclick="handleParseImage()" disabled class="w-full bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-bold py-2.5 rounded-lg transition flex justify-center items-center gap-2">
-              <span>🔍 OCR & Extract Recipe</span>
+              <span id="parseImageBtnLabel">🔍 OCR & Extract Recipe</span>
             </button>
           </div>
 
@@ -90,8 +107,8 @@
         <!-- Saved Recipes Sidebar Collection Box -->
         <div class="bg-slate-800/80 p-5 rounded-xl border border-slate-700 shadow-md">
           <div class="flex items-center justify-between mb-3">
-            <h3 class="text-sm font-semibold text-slate-200">Your Recipe Collection</h3>
-            <span class="text-[11px] text-slate-400">SQLite Database</span>
+            <h3 id="collectionTitleText" class="text-sm font-semibold text-slate-200">Your Recipe Collection</h3>
+            <span id="collectionDbBadge" class="text-[11px] text-slate-400">SQLite Database</span>
           </div>
 
           <!-- Live Search Input -->
@@ -112,8 +129,8 @@
       <div class="lg:col-span-7">
         <div id="emptyState" class="h-96 flex flex-col items-center justify-center border-2 border-dashed border-slate-800 rounded-xl text-slate-500 text-sm no-print p-6 text-center">
           <span class="text-4xl mb-3">🍳</span>
-          <p class="font-medium text-slate-400 mb-1">No recipe currently active</p>
-          <p class="text-xs text-slate-500 max-w-sm">Paste recipe text or upload a screenshot on the left, or select a recipe from your collection.</p>
+          <p id="emptyStateTitle" class="font-medium text-slate-400 mb-1">No recipe currently active</p>
+          <p id="emptyStateSub" class="text-xs text-slate-500 max-w-sm">Paste recipe text or upload a screenshot on the left, or select a recipe from your collection.</p>
         </div>
 
         <div id="recipeCard" class="hidden bg-slate-800/90 border border-slate-700 p-6 rounded-2xl shadow-xl print-card">
@@ -125,7 +142,7 @@
             </div>
 
             <div class="flex items-center gap-2 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-700 text-xs">
-              <span class="text-slate-400">Servings:</span>
+              <span id="servingsLabelText" class="text-slate-400">Servings:</span>
               <button onclick="scaleServings(-1)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-amber-400 font-bold">-</button>
               <span id="currentServings" class="font-bold px-1 text-white">4</span>
               <button onclick="scaleServings(1)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-amber-400 font-bold">+</button>
@@ -134,56 +151,28 @@
             <div class="flex flex-wrap items-center gap-2">
               <button onclick="enterCookMode()" class="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1.5 shadow transition">
                 <span>🍳</span>
-                <span>Cook Mode</span>
+                <span id="cookModeBtnLabel">Cook Mode</span>
               </button>
               <button onclick="saveCurrentRecipe()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1">
                 <span>💾</span>
                 <span id="saveBtnLabel">Save to SQLite</span>
               </button>
-              <button onclick="window.print()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-semibold transition">🖨️ Print</button>
+              <button onclick="window.print()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-semibold transition">
+                <span>🖨️</span>
+                <span id="printBtnLabel">Print</span>
+              </button>
               <button onclick="addNextRecipe()" class="px-3 py-1.5 bg-slate-700 hover:bg-amber-500 hover:text-slate-950 text-slate-200 rounded-lg text-xs font-semibold transition flex items-center gap-1" title="Clear view and add next recipe">
                 <span>➕</span>
-                <span>Add Next</span>
+                <span id="addNextBtnLabel">Add Next</span>
               </button>
               <button onclick="deleteActiveRecipe()" class="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 rounded-lg text-xs font-semibold transition flex items-center gap-1" title="Delete this recipe">
                 <span>🗑️</span>
-                <span>Delete</span>
+                <span id="deleteBtnLabel">Delete</span>
               </button>
               <button onclick="closeActiveRecipe()" class="p-1.5 bg-slate-800 hover:bg-rose-600/30 text-slate-400 hover:text-rose-300 rounded-lg text-xs transition" title="Close recipe view">
                 ✕
               </button>
             </div>
-          </div>
-
-          <!-- Translation Toolbar -->
-          <div class="flex flex-wrap items-center justify-between gap-2 p-2.5 mb-4 bg-slate-900/90 rounded-xl border border-slate-700/80 text-xs no-print">
-            <div class="flex items-center gap-2 flex-wrap">
-              <span class="text-slate-400 font-medium flex items-center gap-1">
-                <span>🌐</span> Translate:
-              </span>
-              <select id="translationLangSelect" onchange="onTranslationLangChanged()" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1 focus:outline-none focus:ring-1 focus:ring-amber-500">
-                <option value="Spanish">Spanish (Español)</option>
-                <option value="French">French (Français)</option>
-                <option value="German">German (Deutsch)</option>
-                <option value="Italian">Italian (Italiano)</option>
-                <option value="Thai">Thai (ไทย)</option>
-                <option value="Japanese">Japanese (日本語)</option>
-                <option value="Vietnamese">Vietnamese (Tiếng Việt)</option>
-                <option value="Chinese">Chinese (中文)</option>
-                <option value="Portuguese">Portuguese (Português)</option>
-                <option value="Greek">Greek (Ελληνικά)</option>
-                <option value="Hindi">Hindi (हिन्दी)</option>
-                <option value="Arabic">Arabic (العربية)</option>
-                <option value="Korean">Korean (한국어)</option>
-              </select>
-              <button id="btnTranslate" onclick="handleTranslateRecipe()" class="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg transition flex items-center gap-1 shadow">
-                <span>Translate</span>
-              </button>
-              <button id="btnToggleOriginal" onclick="toggleOriginalView()" class="hidden px-3 py-1 bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 rounded-lg font-semibold transition">
-                🔙 Show Original
-              </button>
-            </div>
-            <div id="translationStatus" class="text-[11px] text-slate-400 italic"></div>
           </div>
 
           <!-- Recipe Photo Attachment Section -->
@@ -195,14 +184,17 @@
               <img id="recipePhotoImg" class="w-full h-48 sm:h-60 object-cover object-center" alt="Recipe Photo">
               <div class="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent opacity-90 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-end justify-between p-3 no-print">
                 <span class="text-xs font-semibold text-slate-200 bg-slate-900/80 px-2.5 py-1 rounded-lg border border-slate-700 flex items-center gap-1">
-                  <span>📸</span> Attached Photo
+                  <span>📸</span>
+                  <span id="photoAttachedLabel">Attached Photo</span>
                 </span>
                 <div class="flex gap-2">
                   <button onclick="document.getElementById('recipePhotoFileInput').click()" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow">
-                    <span>📷</span> Change Photo
+                    <span>📷</span>
+                    <span id="changePhotoLabel">Change Photo</span>
                   </button>
                   <button onclick="removeRecipePhoto()" class="px-3 py-1.5 bg-rose-600/90 hover:bg-rose-600 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow">
-                    <span>🗑️</span> Remove
+                    <span>🗑️</span>
+                    <span id="removePhotoLabel">Remove</span>
                   </button>
                 </div>
               </div>
@@ -212,7 +204,7 @@
             <div id="recipePhotoAddContainer" class="no-print mb-3">
               <div id="recipePhotoDropZone" onclick="document.getElementById('recipePhotoFileInput').click()" class="border-2 border-dashed border-slate-700 hover:border-amber-500/80 bg-slate-900/40 hover:bg-slate-900/80 rounded-xl p-3 text-center cursor-pointer transition flex items-center justify-center gap-2 text-slate-400 hover:text-amber-400 text-xs font-semibold">
                 <span class="text-base">📷</span>
-                <span>Add / Drag Recipe Photo (Auto-resized max 1200px)</span>
+                <span id="recipePhotoDropPromptText">Add / Drag Recipe Photo (Auto-resized max 1200px)</span>
               </div>
             </div>
           </div>
@@ -220,7 +212,7 @@
           <!-- Recipe Title & Reset Controls -->
           <div class="flex items-start justify-between gap-4 mb-2">
             <h2 id="recipeTitle" class="text-2xl font-bold text-amber-400"></h2>
-            <button onclick="resetProgress()" class="no-print text-xs text-slate-400 hover:text-amber-400 px-2 py-1 rounded bg-slate-900/60 border border-slate-700/60 transition shrink-0" title="Reset all checkboxes">
+            <button id="resetChecksBtn" onclick="resetProgress()" class="no-print text-xs text-slate-400 hover:text-amber-400 px-2 py-1 rounded bg-slate-900/60 border border-slate-700/60 transition shrink-0" title="Reset all checkboxes">
               🔄 Reset Checks
             </button>
           </div>
@@ -239,7 +231,7 @@
             <div class="flex items-center gap-3 flex-wrap no-print">
               <!-- Difficulty Button -->
               <div class="flex items-center gap-1.5">
-                <span class="text-slate-400 font-medium">Difficulty:</span>
+                <span id="difficultyPrefixLabel" class="text-slate-400 font-medium">Difficulty:</span>
                 <button id="difficultyBtn" onclick="cycleDifficulty()" class="px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm border bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:scale-105" title="Click to change difficulty">
                   <span id="difficultyIcon">🟢</span>
                   <span id="difficultyLabel">Easy</span>
@@ -248,7 +240,7 @@
 
               <!-- 5-Star Rating Buttons -->
               <div class="flex items-center gap-1.5">
-                <span class="text-slate-400 font-medium">Rating:</span>
+                <span id="ratingPrefixLabel" class="text-slate-400 font-medium">Rating:</span>
                 <div id="starRatingContainer" class="flex items-center bg-slate-900 px-2 py-0.5 rounded-lg border border-slate-700/80 gap-0.5 cursor-pointer">
                   <button type="button" onclick="setRecipeRating(1)" class="star-btn text-base transition hover:scale-125 focus:outline-none text-slate-600 hover:text-amber-400" title="1 Star">☆</button>
                   <button type="button" onclick="setRecipeRating(2)" class="star-btn text-base transition hover:scale-125 focus:outline-none text-slate-600 hover:text-amber-400" title="2 Stars">☆</button>
@@ -268,7 +260,7 @@
           <div class="print-grid grid grid-cols-1 md:grid-cols-12 gap-6">
             <div class="md:col-span-5 space-y-3">
               <div class="flex items-center justify-between border-b border-slate-700 pb-1">
-                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-300">Ingredients</h3>
+                <h3 id="ingredientsSectionTitle" class="text-sm font-bold uppercase tracking-wider text-slate-300">Ingredients</h3>
                 <span id="ingProgressSummary" class="text-[11px] text-slate-400 no-print"></span>
               </div>
               <ul id="ingredientsList" class="space-y-2 text-sm text-slate-200"></ul>
@@ -276,7 +268,7 @@
 
             <div class="md:col-span-7 space-y-3">
               <div class="flex items-center justify-between border-b border-slate-700 pb-1">
-                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-300">Instructions</h3>
+                <h3 id="instructionsSectionTitle" class="text-sm font-bold uppercase tracking-wider text-slate-300">Instructions</h3>
                 <span id="instProgressSummary" class="text-[11px] text-slate-400 no-print"></span>
               </div>
               <ol id="instructionsList" class="space-y-3 text-sm text-slate-200 leading-relaxed"></ol>
@@ -401,17 +393,12 @@
 
   <script>
     let activeRecipe = null;
-    let originalRecipe = null; // Preserves untranslated base record
+    let originalRecipe = null;
     let baseServings = 4;
     let currentServingsCount = 4;
     let currentUnit = 'metric';
     let selectedImageBase64 = null;
     let selectedImageMime = "image/jpeg";
-
-    // Translation Cache and Active Language State
-    let translationCache = {}; // lang -> translatedRecipe
-    let currentTranslationLang = null;
-    let isViewingOriginal = true;
 
     // Active Tag Filter in Sidebar
     let activeTagFilter = "All";
@@ -437,26 +424,822 @@
       floz_to_ml: 29.5735
     };
 
-    // Initialize preferred language from localStorage
-    function getPreferredLanguage() {
-      return localStorage.getItem("recipe_preferred_lang") || "Spanish";
-    }
-
-    function setPreferredLanguage(lang) {
-      localStorage.setItem("recipe_preferred_lang", lang);
-    }
-
-    function initLanguageSelector() {
-      const select = document.getElementById("translationLangSelect");
-      if (select) {
-        select.value = getPreferredLanguage();
+    /* ==========================================================================
+       AUTHENTIC INTERNATIONALIZATION (i18n) DICTIONARY
+       ========================================================================== */
+    const I18N = {
+      en: {
+        appSubtitle: "Clean extraction, live unit conversions, photo attachments, tags, and interactive Cook Mode",
+        addRecipe: "Add Recipe",
+        saved: "Saved",
+        tabText: "📝 Text / Caption",
+        tabImage: "📸 Screenshot / Photo",
+        rawPlaceholder: "Paste full post, Instagram caption, or ingredients list here...",
+        parseText: "✨ Format & Parse Text",
+        parsingText: "⏳ Parsing with Gemini...",
+        dropScreenshot: "Click or drag screenshot here",
+        dropSupported: "JPEG, PNG, WebP supported",
+        parseImage: "🔍 OCR & Extract Recipe",
+        parsingImage: "🔍 OCR Parsing Image...",
+        collectionTitle: "Your Recipe Collection",
+        dbBadge: "SQLite Database",
+        searchPlaceholder: "🔍 Search recipes, ingredients, or tags...",
+        allTags: "All",
+        noMatchingRecipes: "No matching recipes found.",
+        noRecipeTitle: "No recipe currently active",
+        noRecipeSub: "Paste recipe text or upload a screenshot on the left, or select a recipe from your collection.",
+        metricBtn: "Metric (g / ml)",
+        imperialBtn: "Imperial (oz / cups)",
+        servingsLabel: "Servings:",
+        cookModeBtn: "Cook Mode",
+        saveBtn: "Save to SQLite",
+        updateBtn: "Update Recipe",
+        printBtn: "Print",
+        addNextBtn: "Add Next",
+        deleteBtn: "Delete",
+        attachedPhoto: "Attached Photo",
+        changePhoto: "Change Photo",
+        removePhoto: "Remove",
+        addPhotoPrompt: "Add / Drag Recipe Photo (Auto-resized max 1200px)",
+        resetChecks: "Reset Checks",
+        prep: "Prep",
+        cook: "Cook",
+        yield: "Yield",
+        servings: "servings",
+        serv: "serv",
+        difficulty: "Difficulty:",
+        diffEasy: "Easy",
+        diffMedium: "Medium",
+        diffHard: "Hard",
+        rating: "Rating:",
+        ingredients: "Ingredients",
+        instructions: "Instructions",
+        prepped: "prepped",
+        completed: "completed",
+        alt: "Alt",
+        step: "Step",
+        of: "of",
+        wakeLockActive: "Screen Awake",
+        wakeLockInactive: "Screen Sleep Normal",
+        ingredientsDrawer: "🥕 Ingredients",
+        closeDrawer: "Done",
+        stepCompleted: "Step Completed (Tap to Undo)",
+        markCompleted: "Mark Step as Completed",
+        nextStep: "Next Step",
+        prevStep: "Previous",
+        finishCooking: "Finish Cooking 🎉",
+        deleteConfirm: "Are you sure you want to delete this recipe? This cannot be undone.",
+        discardConfirm: "Discard unsaved recipe?",
+        saveSuccess: "🎉 Recipe successfully saved to SQLite database!",
+        deleteSuccess: "🗑️ Recipe deleted successfully.",
+        pasteFirst: "Please paste recipe text first!",
+        selectImageFirst: "Please select an image first!",
+        allStepsDone: "🎉 Congratulations! You have completed all steps in this recipe."
+      },
+      es: {
+        appSubtitle: "Extracción limpia, conversión de unidades, fotos adjuntas, etiquetas y Modo Cocina",
+        addRecipe: "Añadir Receta",
+        saved: "Guardadas",
+        tabText: "📝 Texto / Copiar",
+        tabImage: "📸 Captura / Foto",
+        rawPlaceholder: "Pega aquí el texto de la receta, publicación o lista de ingredientes...",
+        parseText: "✨ Formatear y Analizar",
+        parsingText: "⏳ Analizando con Gemini...",
+        dropScreenshot: "Haz clic o arrastra una captura aquí",
+        dropSupported: "Formatos admitidos: JPEG, PNG, WebP",
+        parseImage: "🔍 Extraer Receta con OCR",
+        parsingImage: "🔍 Extrayendo imagen...",
+        collectionTitle: "Tu Colección de Recetas",
+        dbBadge: "Base de Datos SQLite",
+        searchPlaceholder: "🔍 Buscar por receta, ingrediente o etiqueta...",
+        allTags: "Todas",
+        noMatchingRecipes: "No se encontraron recetas.",
+        noRecipeTitle: "Ninguna receta seleccionada",
+        noRecipeSub: "Pega una receta o sube una imagen a la izquierda, o elige una de tu colección.",
+        metricBtn: "Métrico (g / ml)",
+        imperialBtn: "Imperial (oz / tazas)",
+        servingsLabel: "Porciones:",
+        cookModeBtn: "Modo Cocina",
+        saveBtn: "Guardar en SQLite",
+        updateBtn: "Actualizar Receta",
+        printBtn: "Imprimir",
+        addNextBtn: "Añadir Siguiente",
+        deleteBtn: "Eliminar",
+        attachedPhoto: "Foto Adjunta",
+        changePhoto: "Cambiar Foto",
+        removePhoto: "Eliminar Foto",
+        addPhotoPrompt: "Añadir o arrastrar foto de la receta (Máx. 1200px)",
+        resetChecks: "Reiniciar Marcas",
+        prep: "Prep.",
+        cook: "Cocción",
+        yield: "Rinde",
+        servings: "porciones",
+        serv: "porc.",
+        difficulty: "Dificultad:",
+        diffEasy: "Fácil",
+        diffMedium: "Media",
+        diffHard: "Difícil",
+        rating: "Valoración:",
+        ingredients: "Ingredientes",
+        instructions: "Instrucciones",
+        prepped: "preparados",
+        completed: "completados",
+        alt: "Sust.",
+        step: "Paso",
+        of: "de",
+        wakeLockActive: "Pantalla Activa",
+        wakeLockInactive: "Pantalla Normal",
+        ingredientsDrawer: "🥕 Ingredientes",
+        closeDrawer: "Listo",
+        stepCompleted: "Paso completado (Toca para deshacer)",
+        markCompleted: "Marcar paso como completado",
+        nextStep: "Siguiente Paso",
+        prevStep: "Anterior",
+        finishCooking: "Terminar de Cocinar 🎉",
+        deleteConfirm: "¿Estás seguro de que deseas eliminar esta receta? Esta acción no se puede deshacer.",
+        discardConfirm: "¿Descartar la receta sin guardar?",
+        saveSuccess: "🎉 ¡Receta guardada con éxito en la base de datos!",
+        deleteSuccess: "🗑️ Receta eliminada con éxito.",
+        pasteFirst: "¡Por favor, pega primero el texto de la receta!",
+        selectImageFirst: "¡Por favor, selecciona una imagen primero!",
+        allStepsDone: "🎉 ¡Felicidades! Has completado todos los pasos de esta receta."
+      },
+      fr: {
+        appSubtitle: "Extraction claire, conversion d'unités, photos, étiquettes et Mode Cuisine interactif",
+        addRecipe: "Ajouter une recette",
+        saved: "Enregistrées",
+        tabText: "📝 Texte / Légende",
+        tabImage: "📸 Capture / Photo",
+        rawPlaceholder: "Collez ici le texte de la recette, le post ou la liste d'ingrédients...",
+        parseText: "✨ Formater et Extraire",
+        parsingText: "⏳ Analyse avec Gemini...",
+        dropScreenshot: "Cliquez ou glissez une capture ici",
+        dropSupported: "Formats JPEG, PNG, WebP supportés",
+        parseImage: "🔍 Extraire via OCR",
+        parsingImage: "🔍 Extraction en cours...",
+        collectionTitle: "Votre Carnet de Recettes",
+        dbBadge: "Base de données SQLite",
+        searchPlaceholder: "🔍 Rechercher une recette, un ingrédient ou une étiquette...",
+        allTags: "Toutes",
+        noMatchingRecipes: "Aucune recette trouvée.",
+        noRecipeTitle: "Aucune recette active",
+        noRecipeSub: "Collez un texte ou téléversez une image à gauche, ou sélectionnez une recette.",
+        metricBtn: "Métrique (g / ml)",
+        imperialBtn: "Impérial (oz / tasses)",
+        servingsLabel: "Portions :",
+        cookModeBtn: "Mode Cuisine",
+        saveBtn: "Enregistrer",
+        updateBtn: "Mettre à jour",
+        printBtn: "Imprimer",
+        addNextBtn: "Ajouter Suivante",
+        deleteBtn: "Supprimer",
+        attachedPhoto: "Photo Jointe",
+        changePhoto: "Changer la photo",
+        removePhoto: "Supprimer la photo",
+        addPhotoPrompt: "Ajouter une photo de la recette (Redimensionnement auto)",
+        resetChecks: "Réinitialiser",
+        prep: "Prépa",
+        cook: "Cuisson",
+        yield: "Pour",
+        servings: "portions",
+        serv: "port.",
+        difficulty: "Difficulté :",
+        diffEasy: "Facile",
+        diffMedium: "Moyen",
+        diffHard: "Difficile",
+        rating: "Note :",
+        ingredients: "Ingrédients",
+        instructions: "Instructions",
+        prepped: "préparés",
+        completed: "terminés",
+        alt: "Subst.",
+        step: "Étape",
+        of: "sur",
+        wakeLockActive: "Écran Éveillé",
+        wakeLockInactive: "Écran Normal",
+        ingredientsDrawer: "🥕 Ingrédients",
+        closeDrawer: "Terminé",
+        stepCompleted: "Étape terminée (Cliquer pour annuler)",
+        markCompleted: "Marquer l'étape comme terminée",
+        nextStep: "Étape suivante",
+        prevStep: "Précédent",
+        finishCooking: "Cuisson terminée 🎉",
+        deleteConfirm: "Voulez-vous vraiment supprimer cette recette ? Cette action est irréversible.",
+        discardConfirm: "Abandonner la recette non enregistrée ?",
+        saveSuccess: "🎉 Recette enregistrée avec succès !",
+        deleteSuccess: "🗑️ Recette supprimée.",
+        pasteFirst: "Veuillez d'abord coller le texte de la recette !",
+        selectImageFirst: "Veuillez d'abord sélectionner une image !",
+        allStepsDone: "🎉 Félicitations ! Vous avez terminé toutes les étapes."
+      },
+      de: {
+        appSubtitle: "Klare Rezepte, Einheitenumrechnung, Fotos, Tags und interaktiver Kochmodus",
+        addRecipe: "Rezept hinzufügen",
+        saved: "Gespeichert",
+        tabText: "📝 Text / Beschreibung",
+        tabImage: "📸 Screenshot / Foto",
+        rawPlaceholder: "Rezepttext, Social-Media-Beitrag oder Zutatenliste hier einfügen...",
+        parseText: "✨ Formatieren & Analysieren",
+        parsingText: "⏳ Analysiere mit Gemini...",
+        dropScreenshot: "Screenshot hierher ziehen oder klicken",
+        dropSupported: "JPEG, PNG, WebP unterstützt",
+        parseImage: "🔍 Rezept via OCR erfassen",
+        parsingImage: "🔍 OCR-Erkennung läuft...",
+        collectionTitle: "Deine Rezeptsammlung",
+        dbBadge: "SQLite-Datenbank",
+        searchPlaceholder: "🔍 Nach Rezepten, Zutaten oder Tags suchen...",
+        allTags: "Alle",
+        noMatchingRecipes: "Keine passenden Rezepte gefunden.",
+        noRecipeTitle: "Kein aktives Rezept",
+        noRecipeSub: "Füge links ein Rezept ein oder wähle eines aus deiner Sammlung.",
+        metricBtn: "Metrisch (g / ml)",
+        imperialBtn: "Imperial (oz / cups)",
+        servingsLabel: "Portionen:",
+        cookModeBtn: "Kochmodus",
+        saveBtn: "In SQLite speichern",
+        updateBtn: "Rezept aktualisieren",
+        printBtn: "Drucken",
+        addNextBtn: "Nächstes Rezept",
+        deleteBtn: "Löschen",
+        attachedPhoto: "Angehängtes Foto",
+        changePhoto: "Foto ändern",
+        removePhoto: "Foto entfernen",
+        addPhotoPrompt: "Rezeptfoto hinzufügen oder ablegen (max. 1200px)",
+        resetChecks: "Häkchen zurücksetzen",
+        prep: "Zubereitung",
+        cook: "Kochzeit",
+        yield: "Ergibt",
+        servings: "Portionen",
+        serv: "Port.",
+        difficulty: "Schwierigkeit:",
+        diffEasy: "Einfach",
+        diffMedium: "Mittel",
+        diffHard: "Schwer",
+        rating: "Bewertung:",
+        ingredients: "Zutaten",
+        instructions: "Zubereitungsschritte",
+        prepped: "vorbereitet",
+        completed: "erledigt",
+        alt: "Ersatz",
+        step: "Schritt",
+        of: "von",
+        wakeLockActive: "Bildschirm aktiv",
+        wakeLockInactive: "Bildschirm normal",
+        ingredientsDrawer: "🥕 Zutaten",
+        closeDrawer: "Fertig",
+        stepCompleted: "Schritt abgeschlossen (Klicken zum Rückgängigmachen)",
+        markCompleted: "Schritt als abgeschlossen markieren",
+        nextStep: "Nächster Schritt",
+        prevStep: "Zurück",
+        finishCooking: "Kochen beenden 🎉",
+        deleteConfirm: "Möchtest du dieses Rezept wirklich löschen? Dies kann nicht rückgängig gemacht werden.",
+        discardConfirm: "Ungespeichertes Rezept verwerfen?",
+        saveSuccess: "🎉 Rezept erfolgreich in der Datenbank gespeichert!",
+        deleteSuccess: "🗑️ Rezept erfolgreich gelöscht.",
+        pasteFirst: "Bitte füge zuerst einen Rezepttext ein!",
+        selectImageFirst: "Bitte wähle zuerst ein Bild aus!",
+        allStepsDone: "🎉 Herzlichen Glückwunsch! Du hast alle Schritte abgeschlossen."
+      },
+      it: {
+        appSubtitle: "Estrazione chiara, conversione unità, foto, tag e Modalità Cucina interattiva",
+        addRecipe: "Aggiungi Ricetta",
+        saved: "Salvate",
+        tabText: "📝 Testo / Didascalia",
+        tabImage: "📸 Screenshot / Foto",
+        rawPlaceholder: "Incolla qui il testo della ricetta o la lista degli ingredienti...",
+        parseText: "✨ Formatta e Analizza",
+        parsingText: "⏳ Analisi con Gemini...",
+        dropScreenshot: "Clicca o trascina uno screenshot qui",
+        dropSupported: "Supporta JPEG, PNG, WebP",
+        parseImage: "🔍 Estrai tramite OCR",
+        parsingImage: "🔍 Riconoscimento in corso...",
+        collectionTitle: "La Tua Raccolta di Ricette",
+        dbBadge: "Database SQLite",
+        searchPlaceholder: "🔍 Cerca ricette, ingredienti o tag...",
+        allTags: "Tutte",
+        noMatchingRecipes: "Nessuna ricetta corrispondente trovata.",
+        noRecipeTitle: "Nessuna ricetta attiva",
+        noRecipeSub: "Incolla una ricetta a sinistra o scegline una dalla tua raccolta.",
+        metricBtn: "Metrico (g / ml)",
+        imperialBtn: "Imperiale (oz / tazze)",
+        servingsLabel: "Porzioni:",
+        cookModeBtn: "Modalità Cucina",
+        saveBtn: "Salva in SQLite",
+        updateBtn: "Aggiorna Ricetta",
+        printBtn: "Stampa",
+        addNextBtn: "Aggiungi Successiva",
+        deleteBtn: "Elimina",
+        attachedPhoto: "Foto Allegata",
+        changePhoto: "Cambia Foto",
+        removePhoto: "Rimuovi Foto",
+        addPhotoPrompt: "Aggiungi o trascina foto ricetta (max 1200px)",
+        resetChecks: "Ripristina Spunte",
+        prep: "Prep.",
+        cook: "Cottura",
+        yield: "Dosi per",
+        servings: "porzioni",
+        serv: "porz.",
+        difficulty: "Difficoltà:",
+        diffEasy: "Facile",
+        diffMedium: "Media",
+        diffHard: "Difficile",
+        rating: "Valutazione:",
+        ingredients: "Ingredienti",
+        instructions: "Istruzioni",
+        prepped: "preparati",
+        completed: "completati",
+        alt: "Alt",
+        step: "Passaggio",
+        of: "di",
+        wakeLockActive: "Schermo Attivo",
+        wakeLockInactive: "Schermo Normale",
+        ingredientsDrawer: "🥕 Ingredienti",
+        closeDrawer: "Fatto",
+        stepCompleted: "Passaggio completato (Tocca per annullare)",
+        markCompleted: "Segna passaggio come completato",
+        nextStep: "Passaggio successivo",
+        prevStep: "Precedente",
+        finishCooking: "Cottura completata 🎉",
+        deleteConfirm: "Sei sicuro di voler eliminare questa ricetta? L'azione è irreversibile.",
+        discardConfirm: "Vuoi scartare la ricetta non salvata?",
+        saveSuccess: "🎉 Ricetta salvata con successo nel database!",
+        deleteSuccess: "🗑️ Ricetta eliminata con successo.",
+        pasteFirst: "Incolla prima il testo della ricetta!",
+        selectImageFirst: "Seleziona prima un'immagine!",
+        allStepsDone: "🎉 Congratulazioni! Hai completato tutti i passaggi."
+      },
+      th: {
+        appSubtitle: "จัดการสูตรอาหาร แปลงหน่วยอัตโนมัติ แนบรูปภาพ ติดแท็ก และโหมดทำอาหาร",
+        addRecipe: "เพิ่มสูตรอาหาร",
+        saved: "บันทึกแล้ว",
+        tabText: "📝 ข้อความ / แคปชั่น",
+        tabImage: "📸 ภาพหน้าจอ / รูปถ่าย",
+        rawPlaceholder: "วางข้อความสูตรอาหาร แคปชั่นโซเชียล หรือรายการวัตถุดิบที่นี่...",
+        parseText: "✨ จัดรูปแบบและแยกข้อมูล",
+        parsingText: "⏳ กำลังประมวลผลด้วย Gemini...",
+        dropScreenshot: "คลิกหรือลากภาพหน้าจอมาวางที่นี่",
+        dropSupported: "รองรับ JPEG, PNG, WebP",
+        parseImage: "🔍 สแกน OCR และสกัดสูตรอาหาร",
+        parsingImage: "🔍 กำลังสแกนรูปภาพ...",
+        collectionTitle: "คลังสูตรอาหารของคุณ",
+        dbBadge: "ฐานข้อมูล SQLite",
+        searchPlaceholder: "🔍 ค้นหาสูตรอาหาร วัตถุดิบ หรือแท็ก...",
+        allTags: "ทั้งหมด",
+        noMatchingRecipes: "ไม่พบสูตรอาหารที่ตรงกัน",
+        noRecipeTitle: "ยังไม่มีสูตรอาหารที่เลือก",
+        noRecipeSub: "วางข้อความสูตรหรืออัปโหลดรูปภาพทางด้านซ้าย หรือเลือกสูตรจากคลังของคุณ",
+        metricBtn: "เมตริก (กรัม / มล.)",
+        imperialBtn: "อิมพีเรียล (ออนซ์ / ถ้วย)",
+        servingsLabel: "จำนวนที่เสิร์ฟ:",
+        cookModeBtn: "โหมดทำอาหาร",
+        saveBtn: "บันทึกลง SQLite",
+        updateBtn: "อัปเดตสูตรอาหาร",
+        printBtn: "พิมพ์สูตร",
+        addNextBtn: "เพิ่มสูตรถัดไป",
+        deleteBtn: "ลบสูตรอาหาร",
+        attachedPhoto: "รูปภาพที่แนบ",
+        changePhoto: "เปลี่ยนรูปภาพ",
+        removePhoto: "ลบรูปภาพ",
+        addPhotoPrompt: "เพิ่มหรือลากรูปถ่ายอาหารมาที่นี่ (ปรับขนาดอัตโนมัติ)",
+        resetChecks: "รีเซ็ตการเลือก",
+        prep: "เตรียม",
+        cook: "ปรุง",
+        yield: "สำหรับ",
+        servings: "ที่",
+        serv: "ที่",
+        difficulty: "ระดับความยาก:",
+        diffEasy: "ง่าย",
+        diffMedium: "ปานกลาง",
+        diffHard: "ยาก",
+        rating: "คะแนน:",
+        ingredients: "วัตถุดิบ",
+        instructions: "วิธีทำ",
+        prepped: "เตรียมแล้ว",
+        completed: "เสร็จสิ้น",
+        alt: "ทางเลือก",
+        step: "ขั้นตอนที่",
+        of: "จาก",
+        wakeLockActive: "เปิดหน้าจอตลอดเวลา",
+        wakeLockInactive: "ปิดหน้าจอตามปกติ",
+        ingredientsDrawer: "🥕 รายการวัตถุดิบ",
+        closeDrawer: "เสร็จสิ้น",
+        stepCompleted: "ทำขั้นตอนนี้เสร็จแล้ว (แตะเพื่อยกเลิก)",
+        markCompleted: "ทำขั้นตอนนี้เสร็จแล้ว",
+        nextStep: "ขั้นตอนถัดไป",
+        prevStep: "ย้อนกลับ",
+        finishCooking: "ทำอาหารเสร็จสิ้น 🎉",
+        deleteConfirm: "คุณแน่ใจหรือไม่ว่าต้องการลบสูตรอาหารนี้? การดำเนินการนี้ไม่สามารถเรียกคืนได้",
+        discardConfirm: "ต้องการละทิ้งสูตรอาหารที่ยังไม่ได้บันทึกหรือไม่?",
+        saveSuccess: "🎉 บันทึกสูตรอาหารลงฐานข้อมูลเรียบร้อยแล้ว!",
+        deleteSuccess: "🗑️ ลบสูตรอาหารเรียบร้อยแล้ว",
+        pasteFirst: "กรุณาวางข้อความสูตรอาหารก่อน!",
+        selectImageFirst: "กรุณาเลือกรูปภาพก่อน!",
+        allStepsDone: "🎉 ยินดีด้วย! คุณทำตามขั้นตอนทั้งหมดเสร็จเรียบร้อยแล้ว"
+      },
+      ja: {
+        appSubtitle: "レシピ抽出、単位変換、写真添付、タグ分類、対話型クックモード",
+        addRecipe: "レシピを追加",
+        saved: "保存済み",
+        tabText: "📝 テキスト / キャプション",
+        tabImage: "📸 スクショ / 写真",
+        rawPlaceholder: "レシピの文章、SNS投稿、材料リストをここに貼り付けてください...",
+        parseText: "✨ フォーマットと解析",
+        parsingText: "⏳ Geminiで解析中...",
+        dropScreenshot: "スクリーンショットをクリックまたはドラッグ",
+        dropSupported: "JPEG, PNG, WebP対応",
+        parseImage: "🔍 OCRでレシピを抽出",
+        parsingImage: "🔍 画像をOCR解析中...",
+        collectionTitle: "レシピコレクション",
+        dbBadge: "SQLiteデータベース",
+        searchPlaceholder: "🔍 レシピ名、材料、タグで検索...",
+        allTags: "すべて",
+        noMatchingRecipes: "該当するレシピが見つかりません。",
+        noRecipeTitle: "表示中のレシピはありません",
+        noRecipeSub: "左側からテキストを入力するか画像をアップロード、またはコレクションから選択してください。",
+        metricBtn: "メートル法 (g / ml)",
+        imperialBtn: "ヤード・ポンド法 (oz / cups)",
+        servingsLabel: "人数・分量:",
+        cookModeBtn: "クックモード",
+        saveBtn: "SQLiteに保存",
+        updateBtn: "レシピを更新",
+        printBtn: "印刷",
+        addNextBtn: "次のレシピを追加",
+        deleteBtn: "削除",
+        attachedPhoto: "添付写真",
+        changePhoto: "写真を変更",
+        removePhoto: "写真を削除",
+        addPhotoPrompt: "レシピ写真を追加またはドラッグ（最大1200px自動調整）",
+        resetChecks: "チェックをリセット",
+        prep: "下準備",
+        cook: "調理",
+        yield: "分量",
+        servings: "人前",
+        serv: "人前",
+        difficulty: "難易度:",
+        diffEasy: "簡単",
+        diffMedium: "普通",
+        diffHard: "本格的",
+        rating: "評価:",
+        ingredients: "材料",
+        instructions: "作り方・手順",
+        prepped: "準備完了",
+        completed: "完了",
+        alt: "代用",
+        step: "ステップ",
+        of: "/",
+        wakeLockActive: "画面スリープ防止 有効",
+        wakeLockInactive: "画面スリープ防止 無効",
+        ingredientsDrawer: "🥕 材料リスト",
+        closeDrawer: "完了",
+        stepCompleted: "この手順を完了 (タップで解除)",
+        markCompleted: "この手順を完了にする",
+        nextStep: "次の手順",
+        prevStep: "前の手順",
+        finishCooking: "調理完了 🎉",
+        deleteConfirm: "このレシピを削除してもよろしいですか？この操作は元に戻せません。",
+        discardConfirm: "未保存のレシピを破棄しますか？",
+        saveSuccess: "🎉 レシピをデータベースに保存しました！",
+        deleteSuccess: "🗑️ レシピを削除しました。",
+        pasteFirst: "最初にレシピのテキストを貼り付けてください！",
+        selectImageFirst: "最初に画像を選択してください！",
+        allStepsDone: "🎉 おめでとうございます！すべての手順が完了しました。"
+      },
+      vi: {
+        appSubtitle: "Trích xuất công thức, đổi đơn vị đo, đính kèm ảnh, gắn thẻ và Chế độ Nấu ăn",
+        addRecipe: "Thêm công thức",
+        saved: "Đã lưu",
+        tabText: "📝 Văn bản / Chú thích",
+        tabImage: "📸 Ảnh chụp màn hình / Ảnh",
+        rawPlaceholder: "Dán nội dung công thức, bài đăng hoặc danh sách nguyên liệu vào đây...",
+        parseText: "✨ Định dạng & Trích xuất",
+        parsingText: "⏳ Đang phân tích với Gemini...",
+        dropScreenshot: "Nhấp hoặc kéo thả ảnh chụp màn hình vào đây",
+        dropSupported: "Hỗ trợ JPEG, PNG, WebP",
+        parseImage: "🔍 Quét OCR & Trích xuất",
+        parsingImage: "🔍 Đang quét ảnh...",
+        collectionTitle: "Bộ Sưu Tập Công Thức",
+        dbBadge: "Cơ sở dữ liệu SQLite",
+        searchPlaceholder: "🔍 Tìm kiếm công thức, nguyên liệu hoặc thẻ...",
+        allTags: "Tất cả",
+        noMatchingRecipes: "Không tìm thấy công thức phù hợp.",
+        noRecipeTitle: "Chưa chọn công thức nào",
+        noRecipeSub: "Dán văn bản hoặc tải ảnh lên ở bên trái, hoặc chọn từ bộ sưu tập của bạn.",
+        metricBtn: "Hệ Mét (g / ml)",
+        imperialBtn: "Hệ Anh (oz / cốc)",
+        servingsLabel: "Khẩu phần:",
+        cookModeBtn: "Chế độ Nấu",
+        saveBtn: "Lưu vào SQLite",
+        updateBtn: "Cập nhật công thức",
+        printBtn: "In",
+        addNextBtn: "Thêm tiếp",
+        deleteBtn: "Xóa",
+        attachedPhoto: "Ảnh đính kèm",
+        changePhoto: "Đổi ảnh",
+        removePhoto: "Xóa ảnh",
+        addPhotoPrompt: "Thêm hoặc kéo thả ảnh công thức (Tự động nén tối đa 1200px)",
+        resetChecks: "Đặt lại đánh dấu",
+        prep: "Chuẩn bị",
+        cook: "Nấu",
+        yield: "Khẩu phần",
+        servings: "phần",
+        serv: "phần",
+        difficulty: "Độ khó:",
+        diffEasy: "Dễ",
+        diffMedium: "Vừa",
+        diffHard: "Khó",
+        rating: "Đánh giá:",
+        ingredients: "Nguyên liệu",
+        instructions: "Cách thực hiện",
+        prepped: "đã chuẩn bị",
+        completed: "đã hoàn thành",
+        alt: "Thay thế",
+        step: "Bước",
+        of: "trên",
+        wakeLockActive: "Màn hình sáng",
+        wakeLockInactive: "Màn hình bình thường",
+        ingredientsDrawer: "🥕 Danh sách Nguyên liệu",
+        closeDrawer: "Xong",
+        stepCompleted: "Đã xong bước này (Chạm để hoàn tác)",
+        markCompleted: "Đánh dấu bước này đã xong",
+        nextStep: "Bước tiếp theo",
+        prevStep: "Bước trước",
+        finishCooking: "Hoàn thành món ăn 🎉",
+        deleteConfirm: "Bạn có chắc chắn muốn xóa công thức này? Hành động này không thể hoàn tác.",
+        discardConfirm: "Bỏ công thức chưa lưu?",
+        saveSuccess: "🎉 Đã lưu công thức vào cơ sở dữ liệu thành công!",
+        deleteSuccess: "🗑️ Đã xóa công thức thành công.",
+        pasteFirst: "Vui lòng dán văn bản công thức trước!",
+        selectImageFirst: "Vui lòng chọn hình ảnh trước!",
+        allStepsDone: "🎉 Chúc mừng! Bạn đã hoàn thành tất cả các bước."
+      },
+      zh: {
+        appSubtitle: "智能食谱解析、单位换算、照片附件、标签分类与互动烹饪模式",
+        addRecipe: "添加食谱",
+        saved: "已保存",
+        tabText: "📝 文本 / 说明",
+        tabImage: "📸 截图 / 照片",
+        rawPlaceholder: "在此粘贴食谱全文、社交媒体文案或食材清单...",
+        parseText: "✨ 格式化并解析",
+        parsingText: "⏳ Gemini 正在解析...",
+        dropScreenshot: "点击或拖拽食谱截图至此处",
+        dropSupported: "支持 JPEG, PNG, WebP",
+        parseImage: "🔍 OCR 图文识别并提取",
+        parsingImage: "🔍 正在进行 OCR 识别...",
+        collectionTitle: "我的食谱收藏",
+        dbBadge: "SQLite 数据库",
+        searchPlaceholder: "🔍 搜索食谱、食材或分类标签...",
+        allTags: "全部",
+        noMatchingRecipes: "未找到匹配的食谱。",
+        noRecipeTitle: "当前未选择食谱",
+        noRecipeSub: "在左侧粘贴食谱文本或上传图片，或从收藏夹中选择食谱。",
+        metricBtn: "公制 (g / ml)",
+        imperialBtn: "英制 (oz / 杯)",
+        servingsLabel: "份量:",
+        cookModeBtn: "烹饪模式",
+        saveBtn: "保存至 SQLite",
+        updateBtn: "更新食谱",
+        printBtn: "打印",
+        addNextBtn: "添加下一道",
+        deleteBtn: "删除",
+        attachedPhoto: "已附照片",
+        changePhoto: "更换照片",
+        removePhoto: "移除照片",
+        addPhotoPrompt: "添加或拖拽食谱照片（自动压缩至1200px）",
+        resetChecks: "重置勾选",
+        prep: "准备",
+        cook: "烹饪",
+        yield: "份量",
+        servings: "人份",
+        serv: "人份",
+        difficulty: "难度:",
+        diffEasy: "简单",
+        diffMedium: "中等",
+        diffHard: "困难",
+        rating: "评分:",
+        ingredients: "食材用料",
+        instructions: "烹饪步骤",
+        prepped: "已准备",
+        completed: "已完成",
+        alt: "替换",
+        step: "步骤",
+        of: "/",
+        wakeLockActive: "屏幕常亮已开启",
+        wakeLockInactive: "屏幕常亮已关闭",
+        ingredientsDrawer: "🥕 食材清单",
+        closeDrawer: "完成",
+        stepCompleted: "当前步骤已完成 (点击撤销)",
+        markCompleted: "标记当前步骤已完成",
+        nextStep: "下一步",
+        prevStep: "上一步",
+        finishCooking: "烹饪完成 🎉",
+        deleteConfirm: "确定要删除此食谱吗？此操作无法撤销。",
+        discardConfirm: "放弃未保存的食谱？",
+        saveSuccess: "🎉 食谱已成功保存至数据库！",
+        deleteSuccess: "🗑️ 食谱已删除。",
+        pasteFirst: "请先粘贴食谱文本！",
+        selectImageFirst: "请先选择图片！",
+        allStepsDone: "🎉 恭喜！您已完成该食谱的所有烹饪步骤。"
+      },
+      pt: {
+        appSubtitle: "Extração clara, conversão de unidades, fotos anexadas, etiquetas e Modo Cozinha",
+        addRecipe: "Adicionar Receita",
+        saved: "Salvas",
+        tabText: "📝 Texto / Legenda",
+        tabImage: "📸 Captura / Foto",
+        rawPlaceholder: "Cole aqui o texto da receita, postagem ou lista de ingredientes...",
+        parseText: "✨ Formatar e Extrair",
+        parsingText: "⏳ Analisando com Gemini...",
+        dropScreenshot: "Clique ou arraste uma captura aqui",
+        dropSupported: "Suporta JPEG, PNG, WebP",
+        parseImage: "🔍 Extrair via OCR",
+        parsingImage: "🔍 Reconhecendo imagem...",
+        collectionTitle: "Sua Coleção de Receitas",
+        dbBadge: "Banco de Dados SQLite",
+        searchPlaceholder: "🔍 Buscar por receitas, ingredientes ou tags...",
+        allTags: "Todas",
+        noMatchingRecipes: "Nenhuma receita encontrada.",
+        noRecipeTitle: "Nenhuma receita selecionada",
+        noRecipeSub: "Cole uma receita ou envie uma foto à esquerda, ou selecione da sua coleção.",
+        metricBtn: "Métrico (g / ml)",
+        imperialBtn: "Imperial (oz / xícaras)",
+        servingsLabel: "Porções:",
+        cookModeBtn: "Modo Cozinha",
+        saveBtn: "Salvar no SQLite",
+        updateBtn: "Atualizar Receita",
+        printBtn: "Imprimir",
+        addNextBtn: "Adicionar Próxima",
+        deleteBtn: "Excluir",
+        attachedPhoto: "Foto Anexada",
+        changePhoto: "Alterar Foto",
+        removePhoto: "Remover Foto",
+        addPhotoPrompt: "Adicionar ou arrastar foto da receita (Máx. 1200px)",
+        resetChecks: "Redefinir Marcações",
+        prep: "Prep.",
+        cook: "Cozimento",
+        yield: "Rendimento",
+        servings: "porções",
+        serv: "porç.",
+        difficulty: "Dificuldade:",
+        diffEasy: "Fácil",
+        diffMedium: "Média",
+        diffHard: "Difícil",
+        rating: "Avaliação:",
+        ingredients: "Ingredientes",
+        instructions: "Modo de Preparo",
+        prepped: "preparados",
+        completed: "concluídos",
+        alt: "Subst.",
+        step: "Passo",
+        of: "de",
+        wakeLockActive: "Tela Ativa",
+        wakeLockInactive: "Tela Normal",
+        ingredientsDrawer: "🥕 Ingredientes",
+        closeDrawer: "Concluído",
+        stepCompleted: "Passo concluído (Toque para desfazer)",
+        markCompleted: "Marcar passo como concluído",
+        nextStep: "Próximo Passo",
+        prevStep: "Anterior",
+        finishCooking: "Concluir Cozimento 🎉",
+        deleteConfirm: "Tem certeza de que deseja excluir esta receita? Esta ação não pode ser desfeita.",
+        discardConfirm: "Descartar receita não salva?",
+        saveSuccess: "🎉 Receita salva com sucesso no banco de dados!",
+        deleteSuccess: "🗑️ Receita excluída com sucesso.",
+        pasteFirst: "Por favor, cole o texto da receita primeiro!",
+        selectImageFirst: "Por favor, selecione uma imagem primeiro!",
+        allStepsDone: "🎉 Parabéns! Você concluiu todos os passos desta receita."
       }
+    };
+
+    let currentSiteLang = "en";
+
+    function getSiteLanguage() {
+      return localStorage.getItem("recipe_deck_site_lang") || "en";
     }
 
-    function onTranslationLangChanged() {
-      const select = document.getElementById("translationLangSelect");
-      if (select) {
-        setPreferredLanguage(select.value);
+    function changeSiteLanguage(lang) {
+      localStorage.setItem("recipe_deck_site_lang", lang);
+      currentSiteLang = lang;
+      applySiteLanguage(lang);
+    }
+
+    function t(key) {
+      const langObj = I18N[currentSiteLang] || I18N.en;
+      return (langObj && langObj[key]) || (I18N.en && I18N.en[key]) || key;
+    }
+
+    function getDifficultyLabel(diff) {
+      const d = diff || "Easy";
+      if (d === "Easy") return t("diffEasy");
+      if (d === "Medium") return t("diffMedium");
+      if (d === "Hard") return t("diffHard");
+      return d;
+    }
+
+    function applySiteLanguage(lang) {
+      currentSiteLang = lang || getSiteLanguage();
+      const select = document.getElementById("siteLanguageSelect");
+      if (select) select.value = currentSiteLang;
+
+      const appSub = document.getElementById("appSubtitleText");
+      if (appSub) appSub.innerText = t("appSubtitle");
+
+      const headerAdd = document.getElementById("headerAddRecipeLabel");
+      if (headerAdd) headerAdd.innerText = t("addRecipe");
+
+      const savedPrefix = document.getElementById("savedCountPrefix");
+      if (savedPrefix) savedPrefix.innerText = t("saved");
+
+      const tabText = document.getElementById("tabTextBtn");
+      if (tabText) tabText.innerText = t("tabText");
+
+      const tabImg = document.getElementById("tabImageBtn");
+      if (tabImg) tabImg.innerText = t("tabImage");
+
+      const rawInput = document.getElementById("rawInput");
+      if (rawInput) rawInput.placeholder = t("rawPlaceholder");
+
+      const parseTextBtnLabel = document.getElementById("parseTextBtnLabel");
+      if (parseTextBtnLabel) parseTextBtnLabel.innerText = t("parseText");
+
+      const dropTitle = document.getElementById("dropPromptTitle");
+      if (dropTitle) dropTitle.innerText = t("dropScreenshot");
+
+      const dropSub = document.getElementById("dropPromptSub");
+      if (dropSub) dropSub.innerText = t("dropSupported");
+
+      const parseImgBtnLabel = document.getElementById("parseImageBtnLabel");
+      if (parseImgBtnLabel) parseImgBtnLabel.innerText = t("parseImage");
+
+      const colTitle = document.getElementById("collectionTitleText");
+      if (colTitle) colTitle.innerText = t("collectionTitle");
+
+      const colDb = document.getElementById("collectionDbBadge");
+      if (colDb) colDb.innerText = t("dbBadge");
+
+      const searchInput = document.getElementById("sidebarSearchInput");
+      if (searchInput) searchInput.placeholder = t("searchPlaceholder");
+
+      const emptyTitle = document.getElementById("emptyStateTitle");
+      if (emptyTitle) emptyTitle.innerText = t("noRecipeTitle");
+
+      const emptySub = document.getElementById("emptyStateSub");
+      if (emptySub) emptySub.innerText = t("noRecipeSub");
+
+      const btnMetric = document.getElementById("btnMetric");
+      if (btnMetric) btnMetric.innerText = t("metricBtn");
+
+      const btnImperial = document.getElementById("btnImperial");
+      if (btnImperial) btnImperial.innerText = t("imperialBtn");
+
+      const servingsLabel = document.getElementById("servingsLabelText");
+      if (servingsLabel) servingsLabel.innerText = t("servingsLabel");
+
+      const cookModeLabel = document.getElementById("cookModeBtnLabel");
+      if (cookModeLabel) cookModeLabel.innerText = t("cookModeBtn");
+
+      const printLabel = document.getElementById("printBtnLabel");
+      if (printLabel) printLabel.innerText = t("printBtn");
+
+      const addNextLabel = document.getElementById("addNextBtnLabel");
+      if (addNextLabel) addNextLabel.innerText = t("addNextBtn");
+
+      const deleteLabel = document.getElementById("deleteBtnLabel");
+      if (deleteLabel) deleteLabel.innerText = t("deleteBtn");
+
+      const photoAttachedLabel = document.getElementById("photoAttachedLabel");
+      if (photoAttachedLabel) photoAttachedLabel.innerText = t("attachedPhoto");
+
+      const changePhotoLabel = document.getElementById("changePhotoLabel");
+      if (changePhotoLabel) changePhotoLabel.innerText = t("changePhoto");
+
+      const removePhotoLabel = document.getElementById("removePhotoLabel");
+      if (removePhotoLabel) removePhotoLabel.innerText = t("removePhoto");
+
+      const photoDropPrompt = document.getElementById("recipePhotoDropPromptText");
+      if (photoDropPrompt) photoDropPrompt.innerText = t("addPhotoPrompt");
+
+      const resetChecksBtn = document.getElementById("resetChecksBtn");
+      if (resetChecksBtn) resetChecksBtn.innerText = "🔄 " + t("resetChecks");
+
+      const diffPrefix = document.getElementById("difficultyPrefixLabel");
+      if (diffPrefix) diffPrefix.innerText = t("difficulty");
+
+      const ratingPrefix = document.getElementById("ratingPrefixLabel");
+      if (ratingPrefix) ratingPrefix.innerText = t("rating");
+
+      const ingSecTitle = document.getElementById("ingredientsSectionTitle");
+      if (ingSecTitle) ingSecTitle.innerText = t("ingredients");
+
+      const instSecTitle = document.getElementById("instructionsSectionTitle");
+      if (instSecTitle) instSecTitle.innerText = t("instructions");
+
+      // Re-render active recipe, tags, and sidebar
+      if (activeRecipe) renderRecipe();
+      renderTagFilterPills();
+      filterSavedRecipes();
+      if (isCookModeActive) {
+        renderCookMode();
+        renderCookDrawer();
       }
     }
 
@@ -684,7 +1467,7 @@
       const diffLabel = document.getElementById("difficultyLabel");
 
       if (diffBtn && diffLabel && diffIcon) {
-        diffLabel.innerText = diff;
+        diffLabel.innerText = getDifficultyLabel(diff);
         if (diff === "Easy") {
           diffIcon.innerText = "🟢";
           diffBtn.className = "px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm border bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:scale-105";
@@ -822,10 +1605,10 @@
        ========================================================================== */
     async function handleParseText() {
       const rawText = document.getElementById("rawInput").value.trim();
-      if (!rawText) return alert("Please paste recipe text first!");
+      if (!rawText) return alert(t("pasteFirst"));
 
       const btn = document.getElementById("parseTextBtn");
-      btn.innerHTML = "<span>⏳ Parsing with Gemini...</span>";
+      btn.innerHTML = `<span>${t("parsingText")}</span>`;
       btn.disabled = true;
 
       try {
@@ -854,16 +1637,16 @@
       } catch (err) {
         alert("Error parsing recipe: " + err.message);
       } finally {
-        btn.innerHTML = "<span>✨ Format & Parse Text</span>";
+        btn.innerHTML = `<span id="parseTextBtnLabel">${t("parseText")}</span>`;
         btn.disabled = false;
       }
     }
 
     async function handleParseImage() {
-      if (!selectedImageBase64) return alert("Please select an image first!");
+      if (!selectedImageBase64) return alert(t("selectImageFirst"));
 
       const btn = document.getElementById("parseImageBtn");
-      btn.innerHTML = "<span>🔍 OCR Parsing Image...</span>";
+      btn.innerHTML = `<span>${t("parsingImage")}</span>`;
       btn.disabled = true;
 
       try {
@@ -895,7 +1678,7 @@
       } catch (err) {
         alert("Error analyzing image: " + err.message);
       } finally {
-        btn.innerHTML = "<span>🔍 OCR & Extract Recipe</span>";
+        btn.innerHTML = `<span id="parseImageBtnLabel">${t("parseImage")}</span>`;
         btn.disabled = false;
       }
     }
@@ -907,9 +1690,6 @@
       activeRecipe.difficulty = recipe.difficulty || 'Easy';
       originalRecipe.rating = activeRecipe.rating;
       originalRecipe.difficulty = activeRecipe.difficulty;
-      translationCache = {};
-      currentTranslationLang = null;
-      isViewingOriginal = true;
 
       baseServings = recipe.servings || 4;
       currentServingsCount = baseServings;
@@ -921,113 +1701,7 @@
       document.getElementById("emptyState").classList.add("hidden");
       document.getElementById("recipeCard").classList.remove("hidden");
       
-      updateTranslationUI();
       renderRecipe();
-    }
-
-    /* ==========================================================================
-       INTELLIGENT RECIPE TRANSLATION ENGINE
-       ========================================================================== */
-    async function handleTranslateRecipe() {
-      if (!originalRecipe) return;
-      const targetLang = document.getElementById("translationLangSelect").value;
-      setPreferredLanguage(targetLang);
-
-      // Check translation cache first
-      if (translationCache[targetLang]) {
-        activeRecipe = JSON.parse(JSON.stringify(translationCache[targetLang]));
-        currentTranslationLang = targetLang;
-        isViewingOriginal = false;
-        updateTranslationUI();
-        renderRecipe();
-        if (isCookModeActive) renderCookMode();
-        return;
-      }
-
-      const btn = document.getElementById("btnTranslate");
-      const statusEl = document.getElementById("translationStatus");
-      btn.innerHTML = "<span>⏳ Translating...</span>";
-      btn.disabled = true;
-      statusEl.innerText = `Translating culinary terms into ${targetLang}...`;
-
-      try {
-        const res = await fetch("/api/translate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            recipe: originalRecipe,
-            targetLanguage: targetLang
-          })
-        });
-
-        if (!res.ok) {
-          let errorMsg = `Server error (${res.status})`;
-          try {
-            const errData = await res.json();
-            if (errData.error) errorMsg = errData.error;
-          } catch (e) {
-            const raw = await res.text();
-            if (raw) errorMsg = raw.slice(0, 150);
-          }
-          throw new Error(errorMsg);
-        }
-
-        const data = await res.json();
-        if (data.error) throw new Error(data.error);
-
-        translationCache[targetLang] = JSON.parse(JSON.stringify(data));
-        activeRecipe = data;
-        currentTranslationLang = targetLang;
-        isViewingOriginal = false;
-
-        updateTranslationUI();
-        renderRecipe();
-        if (isCookModeActive) renderCookMode();
-      } catch (err) {
-        alert("Translation failed: " + err.message);
-        statusEl.innerText = "Translation failed.";
-      } finally {
-        btn.innerHTML = "<span>Translate</span>";
-        btn.disabled = false;
-      }
-    }
-
-    function toggleOriginalView() {
-      if (!originalRecipe) return;
-
-      if (isViewingOriginal && currentTranslationLang && translationCache[currentTranslationLang]) {
-        // Switch back to translation
-        activeRecipe = JSON.parse(JSON.stringify(translationCache[currentTranslationLang]));
-        isViewingOriginal = false;
-      } else {
-        // Switch to original
-        activeRecipe = JSON.parse(JSON.stringify(originalRecipe));
-        isViewingOriginal = true;
-      }
-
-      updateTranslationUI();
-      renderRecipe();
-      if (isCookModeActive) renderCookMode();
-    }
-
-    function updateTranslationUI() {
-      const toggleBtn = document.getElementById("btnToggleOriginal");
-      const statusEl = document.getElementById("translationStatus");
-      if (!toggleBtn || !statusEl) return;
-
-      if (currentTranslationLang) {
-        toggleBtn.classList.remove("hidden");
-        if (isViewingOriginal) {
-          toggleBtn.innerText = `🌐 View ${currentTranslationLang}`;
-          statusEl.innerText = `Viewing Original (English)`;
-        } else {
-          toggleBtn.innerText = `🔙 Show Original`;
-          statusEl.innerText = `Translated into ${currentTranslationLang}`;
-        }
-      } else {
-        toggleBtn.classList.add("hidden");
-        statusEl.innerText = "";
-      }
     }
 
     /* ==========================================================================
@@ -1106,16 +1780,16 @@
       if (!activeRecipe) return;
 
       document.getElementById("recipeTitle").innerText = activeRecipe.title;
-      document.getElementById("prepMeta").innerText = `Prep: ${activeRecipe.prepTimeMinutes || 0}m`;
-      document.getElementById("cookMeta").innerText = `Cook: ${activeRecipe.cookTimeMinutes || 0}m`;
-      document.getElementById("yieldMeta").innerText = `Yield: ${currentServingsCount} servings`;
+      document.getElementById("prepMeta").innerText = `${t("prep")}: ${activeRecipe.prepTimeMinutes || 0}m`;
+      document.getElementById("cookMeta").innerText = `${t("cook")}: ${activeRecipe.cookTimeMinutes || 0}m`;
+      document.getElementById("yieldMeta").innerText = `${t("yield")}: ${currentServingsCount} ${t("servings")}`;
       document.getElementById("currentServings").innerText = currentServingsCount;
 
       renderRatingAndDifficultyUI();
 
       const saveLabel = document.getElementById("saveBtnLabel");
       if (saveLabel) {
-        saveLabel.innerText = activeRecipe.id ? "Update Recipe" : "Save to SQLite";
+        saveLabel.innerText = activeRecipe.id ? t("updateBtn") : t("saveBtn");
       }
 
       // Render Tags
@@ -1151,7 +1825,7 @@
       const checkedIngCount = checkedIngredients.size;
       const ingSummary = document.getElementById("ingProgressSummary");
       if (ingSummary) {
-        ingSummary.innerText = totalIng ? `${checkedIngCount}/${totalIng} prepped` : "";
+        ingSummary.innerText = totalIng ? `${checkedIngCount}/${totalIng} ${t("prepped")}` : "";
       }
 
       const ingList = document.getElementById("ingredientsList");
@@ -1162,7 +1836,7 @@
 
         const qtyDisplay = qty !== null ? `<strong>${qty} ${unit}</strong>` : '';
         const subsDisplay = substitutions && substitutions.length 
-          ? `<span class="block text-xs text-amber-300/80 mt-0.5">Alt: ${substitutions.join(', ')}</span>` 
+          ? `<span class="block text-xs text-amber-300/80 mt-0.5">${t("alt")}: ${substitutions.join(', ')}</span>` 
           : '';
 
         const li = document.createElement("li");
@@ -1191,7 +1865,7 @@
       const checkedInstCount = checkedInstructions.size;
       const instSummary = document.getElementById("instProgressSummary");
       if (instSummary) {
-        instSummary.innerText = totalInst ? `${checkedInstCount}/${totalInst} completed` : "";
+        instSummary.innerText = totalInst ? `${checkedInstCount}/${totalInst} ${t("completed")}` : "";
       }
 
       const instList = document.getElementById("instructionsList");
@@ -1419,7 +2093,7 @@
       } else {
         checkedInstructions.add(cookStepIndex);
         renderCookMode();
-        alert("🎉 Congratulations! You have completed all steps in this recipe.");
+        alert(t("allStepsDone"));
       }
     }
 
@@ -1447,15 +2121,15 @@
 
       // Header info
       document.getElementById("cookRecipeTitle").innerText = activeRecipe.title;
-      document.getElementById("cookStepBadge").innerText = `Step ${cookStepIndex + 1} of ${totalSteps}`;
-      document.getElementById("cookTimeMeta").innerText = `Prep: ${activeRecipe.prepTimeMinutes || 0}m • Cook: ${activeRecipe.cookTimeMinutes || 0}m`;
+      document.getElementById("cookStepBadge").innerText = `${t("step")} ${cookStepIndex + 1} ${t("of")} ${totalSteps}`;
+      document.getElementById("cookTimeMeta").innerText = `${t("prep")}: ${activeRecipe.prepTimeMinutes || 0}m • ${t("cook")}: ${activeRecipe.cookTimeMinutes || 0}m`;
 
       // Progress bar
       const progressPercent = Math.round(((cookStepIndex + 1) / totalSteps) * 100);
       document.getElementById("cookProgressBar").style.width = `${progressPercent}%`;
 
       // Step text and pill
-      document.getElementById("cookStepPill").innerText = `Step ${cookStepIndex + 1} of ${totalSteps}`;
+      document.getElementById("cookStepPill").innerText = `${t("step")} ${cookStepIndex + 1} ${t("of")} ${totalSteps}`;
       const stepContentEl = document.getElementById("cookStepContent");
       stepContentEl.innerText = currentStepText;
       if (isCurrentDone) {
@@ -1472,12 +2146,12 @@
         checkBtn.className = "px-6 py-3.5 rounded-xl border text-sm md:text-base font-semibold flex items-center gap-3 transition cursor-pointer shadow-md bg-amber-500/10 border-amber-500/40 text-amber-400";
         checkIcon.className = "w-6 h-6 rounded flex items-center justify-center border border-amber-500/50 bg-amber-500/20 text-amber-400 text-sm font-bold";
         checkIcon.innerText = "✓";
-        checkText.innerText = "Step Completed (Tap to Undo)";
+        checkText.innerText = t("stepCompleted");
       } else {
         checkBtn.className = "px-6 py-3.5 rounded-xl border text-sm md:text-base font-semibold flex items-center gap-3 transition cursor-pointer shadow-md bg-slate-900 border-slate-700 hover:border-amber-500 text-slate-200";
         checkIcon.className = "w-6 h-6 rounded flex items-center justify-center border border-slate-600 bg-slate-800 text-xs";
         checkIcon.innerText = "";
-        checkText.innerText = "Mark Step as Completed";
+        checkText.innerText = t("markCompleted");
       }
 
       // Prev / Next Buttons
@@ -1487,10 +2161,10 @@
 
       prevBtn.disabled = cookStepIndex === 0;
       if (cookStepIndex === totalSteps - 1) {
-        nextBtnText.innerText = "Finish Cooking 🎉";
+        nextBtnText.innerText = t("finishCooking");
         nextBtn.className = "flex-1 max-w-[240px] h-14 md:h-16 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold rounded-2xl text-base md:text-lg flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-500/20";
       } else {
-        nextBtnText.innerText = "Next Step";
+        nextBtnText.innerText = t("nextStep");
         nextBtn.className = "flex-1 max-w-[240px] h-14 md:h-16 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold rounded-2xl text-base md:text-lg flex items-center justify-center gap-2 transition shadow-lg shadow-amber-500/10";
       }
 
@@ -1828,7 +2502,7 @@
         }
         await updateSavedUI();
         renderRecipe();
-        alert("🎉 Recipe successfully saved to SQLite database!");
+        alert(t("saveSuccess"));
       } catch (err) {
         console.warn("Backend save failed, using local storage fallback:", err);
         const recipes = JSON.parse(localStorage.getItem("recipe_deck_items") || "[]");
@@ -1844,7 +2518,7 @@
         cachedSavedRecipes = recipes;
         await updateSavedUI();
         renderRecipe();
-        alert("Recipe saved locally!");
+        alert(t("saveSuccess"));
       }
     }
 
@@ -1866,7 +2540,7 @@
 
     async function deleteRecipe(id, event) {
       event.stopPropagation();
-      if (!confirm("Are you sure you want to delete this recipe?")) return;
+      if (!confirm(t("deleteConfirm"))) return;
       try {
         await fetch(`/api/recipes/${id}`, { method: "DELETE" });
       } catch (e) {
@@ -1879,6 +2553,7 @@
         closeActiveRecipe();
       }
       await updateSavedUI();
+      alert(t("deleteSuccess"));
     }
 
     /* ==========================================================================
@@ -1892,7 +2567,7 @@
       let filtered = cachedSavedRecipes || [];
 
       // Filter by active tag pill
-      if (activeTagFilter !== "All") {
+      if (activeTagFilter !== "All" && activeTagFilter !== t("allTags")) {
         const targetTag = activeTagFilter.toLowerCase().replace(/^#/, "");
         filtered = filtered.filter(r => {
           const tags = (r.tags || []).map(t => t.toLowerCase().replace(/^#/, ""));
@@ -1933,11 +2608,12 @@
       });
 
       const uniqueTags = Object.keys(tagCountMap).sort((a, b) => tagCountMap[b] - tagCountMap[a]);
-      const filterPills = ["All", ...uniqueTags];
+      const filterPills = [t("allTags"), ...uniqueTags];
 
       bar.innerHTML = filterPills.map(tag => {
-        const isActive = activeTagFilter === tag;
-        const count = tag === "All" ? cachedSavedRecipes.length : tagCountMap[tag];
+        const isAll = (tag === t("allTags") || tag === "All");
+        const isActive = (activeTagFilter === tag) || (isAll && (activeTagFilter === "All" || activeTagFilter === t("allTags")));
+        const count = isAll ? cachedSavedRecipes.length : tagCountMap[tag];
         const activeClass = isActive 
           ? "bg-amber-500 text-slate-950 font-bold shadow" 
           : "bg-slate-900 border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600";
@@ -1956,7 +2632,7 @@
       if (!listEl) return;
 
       if (!recipes.length) {
-        listEl.innerHTML = '<p class="text-slate-500 text-xs py-2">No matching recipes found.</p>';
+        listEl.innerHTML = `<p class="text-slate-500 text-xs py-2">${t("noMatchingRecipes")}</p>`;
         return;
       }
 
@@ -1977,11 +2653,11 @@
         let diffBadge = '';
         const diff = r.difficulty || 'Easy';
         if (diff === 'Easy') {
-          diffBadge = `<span class="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 text-[10px]">🟢 Easy</span>`;
+          diffBadge = `<span class="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 text-[10px]">🟢 ${t("diffEasy")}</span>`;
         } else if (diff === 'Medium') {
-          diffBadge = `<span class="px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-300 text-[10px]">🟡 Med</span>`;
+          diffBadge = `<span class="px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-300 text-[10px]">🟡 ${t("diffMedium")}</span>`;
         } else if (diff === 'Hard') {
-          diffBadge = `<span class="px-1.5 py-0.2 rounded bg-rose-500/10 text-rose-400 text-[10px]">🔴 Hard</span>`;
+          diffBadge = `<span class="px-1.5 py-0.2 rounded bg-rose-500/10 text-rose-400 text-[10px]">🔴 ${t("diffHard")}</span>`;
         }
 
         return `
@@ -1993,7 +2669,7 @@
                 ${ratingBadge}
               </div>
               <div class="text-[11px] text-slate-400 flex items-center gap-1.5 flex-wrap mt-0.5">
-                <span>${r.servings || 4} serv</span>
+                <span>${r.servings || 4} ${t("serv")}</span>
                 <span>•</span>
                 <span>${(r.prepTimeMinutes || 0) + (r.cookTimeMinutes || 0)}m</span>
                 ${diffBadge}
@@ -2014,7 +2690,7 @@
     }
 
     // Startup Initialization
-    initLanguageSelector();
+    applySiteLanguage(getSiteLanguage());
     updateSavedUI();
   </script>
 </body>
