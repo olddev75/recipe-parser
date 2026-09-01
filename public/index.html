@@ -115,6 +115,19 @@
           <span id="headerAddRecipeLabel">Add Recipe</span>
         </button>
 
+        <!-- User Auth Badge / Login Button -->
+        <div id="userAuthContainer" class="flex items-center">
+          <button id="authLoginBtn" onclick="openAuthModal('login')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow cursor-pointer" title="Sign In or Register">
+            <span>👤</span>
+            <span id="authLoginBtnLabel">Sign In</span>
+          </button>
+          <div id="userProfileBadge" class="hidden flex items-center gap-2 bg-slate-800/90 border border-slate-700 rounded-lg px-2.5 py-1 text-xs shadow-sm">
+            <span class="text-amber-400">👤</span>
+            <span id="userDisplayNameLabel" class="font-semibold text-slate-200 truncate max-w-[100px]">User</span>
+            <button onclick="handleLogout()" class="text-slate-400 hover:text-rose-400 font-bold ml-1 p-0.5" title="Sign Out">✕</button>
+          </div>
+        </div>
+
         <!-- Saved Count Badge -->
         <div id="savedCountBadge" class="text-sm font-medium bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700" title="Total recipes saved in your library">
           <span id="savedCountPrefix">Saved</span>: <span id="savedCount" class="text-amber-400 font-bold">0</span>
@@ -405,6 +418,39 @@
                 <span id="instProgressSummary" class="text-[11px] text-slate-400 no-print"></span>
               </div>
               <ol id="instructionsList" class="space-y-3 text-sm text-slate-200 leading-relaxed"></ol>
+            </div>
+          </div>
+
+          <!-- Recipe Comments Section (Phase 5) -->
+          <div id="recipeCommentsSection" class="mt-8 pt-6 border-t border-slate-700/80 no-print">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-2">
+                <span class="text-base">💬</span>
+                <h3 id="commentsHeaderTitle" class="text-sm font-bold uppercase tracking-wider text-slate-300">Comments & Cooking Notes</h3>
+                <span id="commentCountBadge" class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-900 border border-slate-700 text-amber-400">0</span>
+              </div>
+            </div>
+
+            <!-- Comment Input Box (Shown if logged in, else login prompt) -->
+            <div id="commentInputContainer" class="mb-4">
+              <div id="commentFormWrapper" class="space-y-2">
+                <textarea id="commentTextInput" rows="2" placeholder="Leave a tip, substitution idea, or note about this recipe..." class="w-full bg-slate-900/90 border border-slate-700 rounded-xl p-3 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 text-slate-200 resize-y placeholder-slate-500"></textarea>
+                <div class="flex justify-end">
+                  <button id="postCommentBtn" onclick="submitRecipeComment()" class="px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs transition shadow flex items-center gap-1.5 cursor-pointer">
+                    <span>💬</span>
+                    <span id="postCommentBtnLabel">Post Comment</span>
+                  </button>
+                </div>
+              </div>
+              <div id="commentLoginPrompt" class="hidden p-3 bg-slate-900/70 border border-slate-700 rounded-xl text-center text-xs text-slate-400">
+                <span>Want to leave a note or comment? </span>
+                <button onclick="openAuthModal('login')" class="text-amber-400 hover:underline font-semibold ml-1 cursor-pointer">Sign in or create an account</button>
+              </div>
+            </div>
+
+            <!-- Comments List -->
+            <div id="commentsList" class="space-y-2.5 max-h-80 overflow-y-auto pr-1 custom-scrollbar">
+              <!-- Rendered dynamically -->
             </div>
           </div>
         </div>
@@ -762,6 +808,18 @@
               </select>
             </div>
           </div>
+
+          <!-- Public Visibility Toggle (Phase 5) -->
+          <div class="pt-2 border-t border-slate-800 flex items-center justify-between">
+            <div>
+              <span id="editPublicLabel" class="font-semibold text-slate-300">Public Recipe</span>
+              <p id="editPublicSub" class="text-[11px] text-slate-500">Share with other users on the public feed</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="editIsPublicInput" checked class="sr-only peer">
+              <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+            </label>
+          </div>
         </div>
 
         <!-- 2. Dynamic Tag Management -->
@@ -823,9 +881,57 @@
       </div>
     </div>
   </div>
+  <!-- User Authentication Modal (Sign In / Register) -->
+  <div id="authModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm transition-all duration-200">
+    <div class="bg-slate-900 border border-slate-700 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+      <!-- Modal Header -->
+      <div class="px-5 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-800/60">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">👤</span>
+          <div>
+            <h2 id="authModalTitle" class="text-sm font-bold text-white">Sign In to Recipe Deck</h2>
+            <p id="authModalSubtitle" class="text-[11px] text-slate-400">Save private recipes and share comments</p>
+          </div>
+        </div>
+        <button onclick="closeAuthModal()" class="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 text-xs cursor-pointer transition">✕</button>
+      </div>
+
+      <!-- Modal Tabs: Login vs Register -->
+      <div class="flex border-b border-slate-800 text-xs font-semibold bg-slate-950/40">
+        <button id="authTabLoginBtn" onclick="switchAuthTab('login')" class="flex-1 py-2.5 border-b-2 border-amber-500 text-amber-400 font-bold cursor-pointer text-center">Sign In</button>
+        <button id="authTabRegisterBtn" onclick="switchAuthTab('register')" class="flex-1 py-2.5 text-slate-400 hover:text-white cursor-pointer text-center">Create Account</button>
+      </div>
+
+      <!-- Modal Form -->
+      <form id="authForm" onsubmit="handleAuthSubmit(event)" class="p-5 space-y-3.5 text-xs">
+        <div id="authDisplayNameField" class="hidden space-y-1">
+          <label class="block font-semibold text-slate-300">Your Display Name</label>
+          <input type="text" id="authDisplayNameInput" placeholder="Chef Mario" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-amber-500">
+        </div>
+
+        <div class="space-y-1">
+          <label class="block font-semibold text-slate-300">Email Address</label>
+          <input type="email" id="authEmailInput" required placeholder="you@example.com" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-amber-500">
+        </div>
+
+        <div class="space-y-1">
+          <label class="block font-semibold text-slate-300">Password</label>
+          <input type="password" id="authPasswordInput" required minlength="6" placeholder="••••••••" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-amber-500">
+        </div>
+
+        <div id="authErrorMsg" class="hidden p-2 rounded-lg bg-rose-950/60 border border-rose-700/60 text-rose-300 text-[11px]"></div>
+
+        <button type="submit" id="authSubmitBtn" class="w-full mt-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-lg transition shadow cursor-pointer text-xs">
+          Sign In
+        </button>
+      </form>
+    </div>
+  </div>
+
   <!-- Floating Background Scraping & Alert Toast -->
   <div id="bgToastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full px-3 pointer-events-none"></div>
   <script>
+    let currentUser = null; // { id, email, displayName } or null
     let activeRecipe = null;
     let originalRecipe = null;
     let baseServings = 4;
@@ -833,6 +939,7 @@
     let currentUnit = 'metric';
     let selectedImageBase64 = null;
     let selectedImageMime = "image/jpeg";
+    let authMode = "login"; // "login" | "register"
 
     // Active Tag Filter in Sidebar
     let activeTagFilter = "All";
@@ -2818,6 +2925,279 @@
       if (modal) modal.classList.add("hidden");
     }
 
+    /* ==========================================================================
+       USER AUTHENTICATION & SESSION MANAGEMENT
+       ========================================================================== */
+
+    async function checkActiveUser() {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (res.ok) {
+          const data = await res.json();
+          currentUser = data.user || null;
+        } else {
+          currentUser = null;
+        }
+      } catch (err) {
+        currentUser = null;
+      }
+      updateAuthUI();
+      if (activeRecipe) {
+        renderRecipeComments();
+        renderRecipeOwnershipControls();
+      }
+    }
+
+    function updateAuthUI() {
+      const loginBtn = document.getElementById("authLoginBtn");
+      const userBadge = document.getElementById("userProfileBadge");
+      const displayNameLabel = document.getElementById("userDisplayNameLabel");
+      const commentForm = document.getElementById("commentFormWrapper");
+      const commentPrompt = document.getElementById("commentLoginPrompt");
+
+      if (currentUser) {
+        if (loginBtn) loginBtn.classList.add("hidden");
+        if (userBadge) userBadge.classList.remove("hidden");
+        if (displayNameLabel) displayNameLabel.innerText = currentUser.displayName || currentUser.email;
+        if (commentForm) commentForm.classList.remove("hidden");
+        if (commentPrompt) commentPrompt.classList.add("hidden");
+      } else {
+        if (loginBtn) loginBtn.classList.remove("hidden");
+        if (userBadge) userBadge.classList.add("hidden");
+        if (commentForm) commentForm.classList.add("hidden");
+        if (commentPrompt) commentPrompt.classList.remove("hidden");
+      }
+    }
+
+    function openAuthModal(mode = "login") {
+      authMode = mode;
+      switchAuthTab(mode);
+      const modal = document.getElementById("authModal");
+      const errBox = document.getElementById("authErrorMsg");
+      if (errBox) errBox.classList.add("hidden");
+      if (modal) modal.classList.remove("hidden");
+    }
+
+    function closeAuthModal() {
+      const modal = document.getElementById("authModal");
+      if (modal) modal.classList.add("hidden");
+    }
+
+    function switchAuthTab(mode) {
+      authMode = mode;
+      const tabLogin = document.getElementById("authTabLoginBtn");
+      const tabRegister = document.getElementById("authTabRegisterBtn");
+      const nameField = document.getElementById("authDisplayNameField");
+      const nameInput = document.getElementById("authDisplayNameInput");
+      const title = document.getElementById("authModalTitle");
+      const submitBtn = document.getElementById("authSubmitBtn");
+      const errBox = document.getElementById("authErrorMsg");
+
+      if (errBox) errBox.classList.add("hidden");
+
+      if (mode === "register") {
+        if (tabLogin) tabLogin.className = "flex-1 py-2.5 text-slate-400 hover:text-white cursor-pointer text-center";
+        if (tabRegister) tabRegister.className = "flex-1 py-2.5 border-b-2 border-amber-500 text-amber-400 font-bold cursor-pointer text-center";
+        if (nameField) nameField.classList.remove("hidden");
+        if (nameInput) nameInput.required = true;
+        if (title) title.innerText = "Create Your Account";
+        if (submitBtn) submitBtn.innerText = "Create Account";
+      } else {
+        if (tabLogin) tabLogin.className = "flex-1 py-2.5 border-b-2 border-amber-500 text-amber-400 font-bold cursor-pointer text-center";
+        if (tabRegister) tabRegister.className = "flex-1 py-2.5 text-slate-400 hover:text-white cursor-pointer text-center";
+        if (nameField) nameField.classList.add("hidden");
+        if (nameInput) nameInput.required = false;
+        if (title) title.innerText = "Sign In to Recipe Deck";
+        if (submitBtn) submitBtn.innerText = "Sign In";
+      }
+    }
+
+    async function handleAuthSubmit(e) {
+      e.preventDefault();
+      const errBox = document.getElementById("authErrorMsg");
+      const email = document.getElementById("authEmailInput").value.trim();
+      const password = document.getElementById("authPasswordInput").value;
+      const displayName = document.getElementById("authDisplayNameInput").value.trim();
+
+      if (errBox) errBox.classList.add("hidden");
+
+      const endpoint = authMode === "register" ? "/api/auth/register" : "/api/auth/login";
+      const payload = authMode === "register" 
+        ? { email, password, displayName } 
+        : { email, password };
+
+      try {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          if (errBox) {
+            errBox.innerText = data.error || "Authentication failed";
+            errBox.classList.remove("hidden");
+          }
+          return;
+        }
+
+        currentUser = data.user;
+        updateAuthUI();
+        closeAuthModal();
+        showBackgroundNotification("success", `Welcome, ${currentUser.displayName}!`);
+        await updateSavedUI();
+        if (activeRecipe) {
+          renderRecipe();
+          renderRecipeComments();
+        }
+      } catch (err) {
+        if (errBox) {
+          errBox.innerText = "Network or server error: " + err.message;
+          errBox.classList.remove("hidden");
+        }
+      }
+    }
+
+    async function handleLogout() {
+      try {
+        await fetch("/api/auth/logout", { method: "POST" });
+        currentUser = null;
+        updateAuthUI();
+        showBackgroundNotification("info", "Signed out successfully");
+        await updateSavedUI();
+        if (activeRecipe) {
+          renderRecipe();
+          renderRecipeComments();
+        }
+      } catch (err) {
+        console.error("Logout error:", err);
+      }
+    }
+
+    /* ==========================================================================
+       RECIPE COMMENTS & NOTES
+       ========================================================================== */
+
+    async function loadRecipeComments(recipeId) {
+      if (!recipeId) return [];
+      try {
+        const res = await fetch(`/api/recipes/${recipeId}/comments`);
+        if (res.ok) return await res.json();
+      } catch (err) {
+        console.warn("Fetch comments error:", err);
+      }
+      return [];
+    }
+
+    async function renderRecipeComments() {
+      const section = document.getElementById("recipeCommentsSection");
+      const list = document.getElementById("commentsList");
+      const badge = document.getElementById("commentCountBadge");
+      if (!section || !list) return;
+
+      if (!activeRecipe || !activeRecipe.id) {
+        section.classList.add("hidden");
+        return;
+      }
+
+      section.classList.remove("hidden");
+      const comments = await loadRecipeComments(activeRecipe.id);
+      if (badge) badge.innerText = comments.length;
+
+      if (!comments.length) {
+        list.innerHTML = `<div class="p-3 text-slate-500 text-xs italic bg-slate-900/40 rounded-xl text-center">No comments or notes yet. Be the first to share a cooking tip!</div>`;
+        return;
+      }
+
+      list.innerHTML = comments.map(c => {
+        const isOwner = currentUser && (currentUser.id === c.userId);
+        const deleteBtn = isOwner 
+          ? `<button onclick="deleteRecipeComment(${c.id})" class="text-slate-500 hover:text-rose-400 p-1 text-[11px] cursor-pointer" title="Delete comment">🗑️</button>` 
+          : "";
+        const formattedDate = new Date(c.createdAt).toLocaleDateString(undefined, {
+          month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"
+        });
+
+        return `
+          <div class="p-3 bg-slate-900/80 border border-slate-800 rounded-xl text-xs space-y-1.5 transition">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-1.5">
+                <span class="text-amber-400">👤</span>
+                <span class="font-bold text-slate-200">${c.userDisplayName || 'User'}</span>
+                <span class="text-[10px] text-slate-500 ml-1">${formattedDate}</span>
+              </div>
+              ${deleteBtn}
+            </div>
+            <p class="text-slate-300 leading-relaxed whitespace-pre-wrap pl-5">${c.comment}</p>
+          </div>
+        `;
+      }).join("");
+    }
+
+    async function submitRecipeComment() {
+      if (!activeRecipe || !activeRecipe.id) return;
+      if (!currentUser) {
+        return openAuthModal("login");
+      }
+
+      const input = document.getElementById("commentTextInput");
+      const comment = input ? input.value.trim() : "";
+      if (!comment) return;
+
+      try {
+        const res = await fetch(`/api/recipes/${activeRecipe.id}/comments`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ comment })
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          return showBackgroundNotification("error", data.error || "Failed to post comment");
+        }
+
+        input.value = "";
+        await renderRecipeComments();
+        showBackgroundNotification("success", "Comment posted!");
+      } catch (err) {
+        showBackgroundNotification("error", "Error posting comment: " + err.message);
+      }
+    }
+
+    async function deleteRecipeComment(commentId) {
+      try {
+        const res = await fetch(`/api/comments/${commentId}`, { method: "DELETE" });
+        if (res.ok) {
+          await renderRecipeComments();
+          showBackgroundNotification("info", "Comment deleted");
+        }
+      } catch (err) {
+        console.error("Delete comment error:", err);
+      }
+    }
+
+    function renderRecipeOwnershipControls() {
+      const editBtn = document.getElementById("editRecipeBtn");
+      const deleteBtn = document.getElementById("deleteBtn");
+
+      if (!activeRecipe) return;
+
+      // Show Edit/Delete buttons if:
+      // 1. Recipe has no userId (legacy / starter recipe), OR
+      // 2. Logged-in user matches activeRecipe.userId
+      const canManage = !activeRecipe.userId || (currentUser && currentUser.id === activeRecipe.userId);
+
+      if (editBtn) {
+        if (canManage) editBtn.classList.remove("hidden");
+        else editBtn.classList.add("hidden");
+      }
+      if (deleteBtn) {
+        if (canManage) deleteBtn.classList.remove("hidden");
+        else deleteBtn.classList.add("hidden");
+      }
+    }
+
 
     // Set of recipe IDs pending user confirmation to Keep
     function getNewlyScrapedIds() {
@@ -2956,8 +3336,6 @@
     }
 
 
-    let editModalTags = [];
-
     function openEditModal() {
       if (!activeRecipe) return;
       const modal = document.getElementById("editRecipeModal");
@@ -2968,6 +3346,11 @@
       document.getElementById("editPrepInput").value = activeRecipe.prepTimeMinutes || 0;
       document.getElementById("editCookInput").value = activeRecipe.cookTimeMinutes || 0;
       document.getElementById("editDifficultyInput").value = activeRecipe.difficulty || "Easy";
+
+      const isPubInput = document.getElementById("editIsPublicInput");
+      if (isPubInput) {
+        isPubInput.checked = activeRecipe.isPublic !== undefined ? Boolean(activeRecipe.isPublic) : true;
+      }
 
       editModalTags = Array.isArray(activeRecipe.tags) ? [...activeRecipe.tags] : [];
       renderEditTags();
@@ -3099,6 +3482,7 @@
       const prepTimeMinutes = parseInt(document.getElementById("editPrepInput").value, 10) || 0;
       const cookTimeMinutes = parseInt(document.getElementById("editCookInput").value, 10) || 0;
       const difficulty = document.getElementById("editDifficultyInput").value || "Easy";
+      const isPublic = document.getElementById("editIsPublicInput") ? (document.getElementById("editIsPublicInput").checked ? 1 : 0) : 1;
 
       // Collect ingredients
       const ingRows = document.querySelectorAll("#editIngredientsList .ingredient-edit-row");
@@ -3134,6 +3518,7 @@
         prepTimeMinutes,
         cookTimeMinutes,
         difficulty,
+        isPublic,
         tags: [...editModalTags],
         ingredients,
         instructions
@@ -4599,6 +4984,9 @@ function sanitizeAndExtractIngredient(ing) {
         `;
         instList.appendChild(li);
       });
+
+      renderRecipeOwnershipControls();
+      renderRecipeComments();
     }
 
     function scaleServings(delta) {
@@ -5576,11 +5964,16 @@ function sanitizeAndExtractIngredient(ing) {
         if (shareModal && !shareModal.classList.contains("hidden")) {
           closeShareModal();
         }
+        const authModal = document.getElementById("authModal");
+        if (authModal && !authModal.classList.contains("hidden")) {
+          closeAuthModal();
+        }
       }
     });
 
     // Startup Initialization
     applySiteLanguage(getSiteLanguage());
+    checkActiveUser();
     updateSavedUI();
 
     /* ==========================================================================

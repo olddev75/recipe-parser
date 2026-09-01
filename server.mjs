@@ -1,6 +1,10 @@
 import { ZipArchive } from "archiver";
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
+import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { GoogleGenAI, Type } from "@google/genai";
 import "dotenv/config";
 import { createClient } from "@libsql/client";
@@ -11,13 +15,52 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dbPath = path.join(__dirname, "recipes.db");
 
+const JWT_SECRET = process.env.JWT_SECRET || "recipe-deck-secret-key-change-in-prod-2026";
+const COOKIE_NAME = "recipe_deck_auth";
+
 const app = express();
 const port = 3000;
 
-app.use(cors());
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
+app.use(cookieParser());
 // Increased limit to handle high-res screenshot uploads and image attachments
 app.use(express.json({ limit: "50mb" }));
 app.use(express.static(path.join(__dirname, "public")));
+
+// Authentication middleware to populate req.user (optional)
+function optionalAuth(req, res, next) {
+  try {
+    const token = req.cookies?.[COOKIE_NAME] || (req.headers.authorization?.startsWith("Bearer ") ? req.headers.authorization.slice(7) : null);
+    if (token) {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      req.user = decoded;
+    }
+  } catch (err) {
+    // Invalid / expired token — continue as guest
+    req.user = null;
+  }
+  next();
+}
+
+// Authentication middleware requiring valid login
+function requireAuth(req, res, next) {
+  try {
+    const token = req.cookies?.[COOKIE_NAME] || (req.headers.authorization?.startsWith("Bearer ") ? req.headers.authorization.slice(7) : null);
+    if (!token) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: "Invalid or expired session" });
+  }
+}
+
+app.use(optionalAuth);
 
 const standardUnitMap = {
   "g": "g", "gram": "g", "grams": "g", "g.": "g", "gr": "g",
@@ -202,8 +245,20 @@ async function dbRun(sql, args = []) {
 
 async function initDb() {
   await db.execute(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      email TEXT UNIQUE NOT NULL,
+      passwordHash TEXT NOT NULL,
+      displayName TEXT NOT NULL,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS recipes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userId TEXT,
+      isPublic INTEGER DEFAULT 1,
       title TEXT NOT NULL,
       servings INTEGER DEFAULT 4,
       prepTimeMinutes INTEGER DEFAULT 0,
@@ -220,6 +275,17 @@ async function initDb() {
     );
   `);
 
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS recipe_comments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      recipeId INTEGER NOT NULL,
+      userId TEXT NOT NULL,
+      userDisplayName TEXT NOT NULL,
+      comment TEXT NOT NULL,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
   // Migration: add columns if existing table doesn't have them
   try {
     const tableInfo = await db.execute("PRAGMA table_info(recipes)");
@@ -228,6 +294,8 @@ async function initDb() {
     if (!cols.includes("rating")) await db.execute("ALTER TABLE recipes ADD COLUMN rating INTEGER DEFAULT 0;");
     if (!cols.includes("difficulty")) await db.execute("ALTER TABLE recipes ADD COLUMN difficulty TEXT DEFAULT 'Easy';");
     if (!cols.includes("isFavourite")) await db.execute("ALTER TABLE recipes ADD COLUMN isFavourite INTEGER DEFAULT 0;");
+    if (!cols.includes("userId")) await db.execute("ALTER TABLE recipes ADD COLUMN userId TEXT;");
+    if (!cols.includes("isPublic")) await db.execute("ALTER TABLE recipes ADD COLUMN isPublic INTEGER DEFAULT 1;");
   } catch (e) {}
 
   // Seed default starter recipes if database is fresh/empty
@@ -852,19 +920,146 @@ app.post("/api/scrape", async (req, res) => {
   }
 });
 
+/* ==========================================================================
+   USER AUTHENTICATION API (JWT in Secure HTTP-Only Cookies)
+   ========================================================================== */
 
+// Helper to set auth cookie
+function setAuthCookie(res, token) {
+  res.cookie(COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+  });
+}
+
+// POST /api/auth/register
+app.post("/api/auth/register", async (req, res) => {
+  try {
+    const { email, password, displayName } = req.body || {};
+    if (!email || !password || !displayName) {
+      return res.status(400).json({ error: "Email, password, and display name are required" });
+    }
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanName = displayName.trim();
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
+
+    const existing = await dbGet("SELECT id FROM users WHERE email = ?", [cleanEmail]);
+    if (existing) {
+      return res.status(400).json({ error: "An account with this email already exists" });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+    const userId = crypto.randomUUID();
+
+    await dbRun(
+      "INSERT INTO users (id, email, passwordHash, displayName, createdAt) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)",
+      [userId, cleanEmail, passwordHash, cleanName]
+    );
+
+    const token = jwt.sign(
+      { id: userId, email: cleanEmail, displayName: cleanName },
+      JWT_SECRET,
+      { expiresIn: "30d" }
+    );
+
+    setAuthCookie(res, token);
+    res.status(201).json({
+      user: { id: userId, email: cleanEmail, displayName: cleanName }
+    });
+  } catch (err) {
+    console.error("Register error:", err);
+    res.status(500).json({ error: "Failed to create user account" });
+  }
+});
+
+// POST /api/auth/login
+app.post("/api/auth/login", async (req, res) => {
+  try {
+    const { email, password } = req.body || {};
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
+    }
+    const cleanEmail = email.trim().toLowerCase();
+
+    const user = await dbGet("SELECT * FROM users WHERE email = ?", [cleanEmail]);
+    if (!user) {
+      return res.status(401).json({ error: "Invalid email or password" });
+    }
+
+    const match = await bcrypt.compare(password, user.passwordHash);
+    if (!match) {
+      return res.status(401).json({ error: "Invalid email or password" });
+    }
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, displayName: user.displayName },
+      JWT_SECRET,
+      { expiresIn: "30d" }
+    );
+
+    setAuthCookie(res, token);
+    res.json({
+      user: { id: user.id, email: user.email, displayName: user.displayName }
+    });
+  } catch (err) {
+    console.error("Login error:", err);
+    res.status(500).json({ error: "Failed to login" });
+  }
+});
+
+// POST /api/auth/logout
+app.post("/api/auth/logout", (req, res) => {
+  res.clearCookie(COOKIE_NAME, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax"
+  });
+  res.json({ success: true, message: "Logged out successfully" });
+});
+
+// GET /api/auth/me
+app.get("/api/auth/me", (req, res) => {
+  if (!req.user) {
+    return res.json({ user: null });
+  }
+  res.json({
+    user: {
+      id: req.user.id,
+      email: req.user.email,
+      displayName: req.user.displayName
+    }
+  });
+});
 
 /* ==========================================================================
    TURSO CLOUD & LIBSQL RECIPE STORAGE API
    ========================================================================== */
 
-// Get all saved recipes
+// Get all saved recipes (where isPublic = 1 OR userId = current user id)
 app.get("/api/recipes", async (req, res) => {
   try {
-    const rows = await dbAll("SELECT * FROM recipes ORDER BY updatedAt DESC, id DESC");
+    let rows;
+    if (req.user?.id) {
+      rows = await dbAll(
+        "SELECT * FROM recipes WHERE isPublic = 1 OR userId = ? OR userId IS NULL ORDER BY updatedAt DESC, id DESC",
+        [req.user.id]
+      );
+    } else {
+      rows = await dbAll(
+        "SELECT * FROM recipes WHERE isPublic = 1 OR userId IS NULL ORDER BY updatedAt DESC, id DESC"
+      );
+    }
+
     const recipes = rows.map(r => ({
       ...r,
       isFavourite: Boolean(r.isFavourite),
+      isPublic: r.isPublic === undefined || r.isPublic === null ? 1 : Number(r.isPublic),
       ingredients: r.ingredients ? JSON.parse(r.ingredients) : [],
       instructions: r.instructions ? JSON.parse(r.instructions) : [],
       tags: r.tags ? JSON.parse(r.tags) : []
@@ -882,8 +1077,15 @@ app.get("/api/recipes/:id", async (req, res) => {
     const recipe = await dbGet("SELECT * FROM recipes WHERE id = ?", req.params.id);
     if (!recipe) return res.status(404).json({ error: "Recipe not found" });
 
+    // Check visibility if private
+    const isPublic = recipe.isPublic === undefined || recipe.isPublic === null ? 1 : Number(recipe.isPublic);
+    if (!isPublic && (!req.user || req.user.id !== recipe.userId)) {
+      return res.status(403).json({ error: "Access denied. This recipe is private." });
+    }
+
     res.json({
       ...recipe,
+      isPublic,
       ingredients: recipe.ingredients ? JSON.parse(recipe.ingredients) : [],
       instructions: recipe.instructions ? JSON.parse(recipe.instructions) : [],
       tags: recipe.tags ? JSON.parse(recipe.tags) : []
@@ -894,7 +1096,6 @@ app.get("/api/recipes/:id", async (req, res) => {
   }
 });
 
-
 // Bulk import recipes into SQLite
 app.post("/api/recipes/bulk-import", async (req, res) => {
   try {
@@ -903,6 +1104,7 @@ app.post("/api/recipes/bulk-import", async (req, res) => {
       return res.status(400).json({ error: "No recipes array provided in request body" });
     }
 
+    const currentUserId = req.user?.id || null;
     let importedCount = 0;
     let skippedCount = 0;
     const importedIds = [];
@@ -922,10 +1124,13 @@ app.post("/api/recipes/bulk-import", async (req, res) => {
       if (existing) {
         skippedCount++;
       } else {
+        const isPublicVal = validated.isPublic !== undefined ? (validated.isPublic ? 1 : 0) : 1;
         const result = await dbRun(
-          `INSERT INTO recipes (title, servings, prepTimeMinutes, cookTimeMinutes, ingredients, instructions, tags, rating, difficulty, isFavourite, imageAttachment, createdAt, updatedAt)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+          `INSERT INTO recipes (userId, isPublic, title, servings, prepTimeMinutes, cookTimeMinutes, ingredients, instructions, tags, rating, difficulty, isFavourite, imageAttachment, createdAt, updatedAt)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
           [
+            currentUserId,
+            isPublicVal,
             title,
             validated.servings || 4,
             validated.prepTimeMinutes || 0,
@@ -963,11 +1168,16 @@ app.post("/api/recipes", async (req, res) => {
   const { title, servings, prepTimeMinutes, cookTimeMinutes, ingredients, instructions, tags, rating, difficulty, isFavourite, imageAttachment } = validated;
   if (!title) return res.status(400).json({ error: "Title is required" });
 
+  const currentUserId = req.user?.id || null;
+  const isPublic = req.body.isPublic !== undefined ? (req.body.isPublic ? 1 : 0) : 1;
+
   try {
     const result = await dbRun(
-      `INSERT INTO recipes (title, servings, prepTimeMinutes, cookTimeMinutes, ingredients, instructions, tags, rating, difficulty, isFavourite, imageAttachment, createdAt, updatedAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+      `INSERT INTO recipes (userId, isPublic, title, servings, prepTimeMinutes, cookTimeMinutes, ingredients, instructions, tags, rating, difficulty, isFavourite, imageAttachment, createdAt, updatedAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
       [
+        currentUserId,
+        isPublic,
         title,
         servings || 4,
         prepTimeMinutes || 0,
@@ -985,6 +1195,7 @@ app.post("/api/recipes", async (req, res) => {
     const saved = await dbGet("SELECT * FROM recipes WHERE id = ?", result.lastID);
     res.status(201).json({
       ...saved,
+      isPublic: Number(saved.isPublic),
       ingredients: saved.ingredients ? JSON.parse(saved.ingredients) : [],
       instructions: saved.instructions ? JSON.parse(saved.instructions) : [],
       tags: saved.tags ? JSON.parse(saved.tags) : []
@@ -995,6 +1206,13 @@ app.post("/api/recipes", async (req, res) => {
   }
 });
 
+// Helper for recipe authorization: allow if no owner (legacy/starter) OR user matches
+function checkRecipeOwnership(recipe, user) {
+  if (!recipe.userId) return true; // Legacy/starter recipes can be edited by any user
+  if (!user || user.id !== recipe.userId) return false;
+  return true;
+}
+
 // Update full recipe by ID
 app.put("/api/recipes/:id", async (req, res) => {
   const validated = selfCheckAndVerifyRecipe(req.body);
@@ -1002,6 +1220,14 @@ app.put("/api/recipes/:id", async (req, res) => {
   try {
     const existing = await dbGet("SELECT * FROM recipes WHERE id = ?", req.params.id);
     if (!existing) return res.status(404).json({ error: "Recipe not found" });
+
+    if (!checkRecipeOwnership(existing, req.user)) {
+      return res.status(403).json({ error: "Forbidden: You are not the owner of this recipe" });
+    }
+
+    const isPublicVal = req.body.isPublic !== undefined 
+      ? (req.body.isPublic ? 1 : 0) 
+      : (existing.isPublic !== undefined ? existing.isPublic : 1);
 
     await dbRun(
       `UPDATE recipes SET
@@ -1015,6 +1241,7 @@ app.put("/api/recipes/:id", async (req, res) => {
          rating = COALESCE(?, rating),
          difficulty = COALESCE(?, difficulty),
          isFavourite = COALESCE(?, isFavourite),
+         isPublic = COALESCE(?, isPublic),
          imageAttachment = ?,
          updatedAt = CURRENT_TIMESTAMP
        WHERE id = ?`,
@@ -1029,6 +1256,7 @@ app.put("/api/recipes/:id", async (req, res) => {
         rating !== undefined ? rating : existing.rating,
         difficulty !== undefined ? difficulty : existing.difficulty,
         isFavourite !== undefined ? (isFavourite ? 1 : 0) : existing.isFavourite,
+        isPublicVal,
         imageAttachment !== undefined ? imageAttachment : existing.imageAttachment,
         req.params.id
       ]
@@ -1037,6 +1265,7 @@ app.put("/api/recipes/:id", async (req, res) => {
     const updated = await dbGet("SELECT * FROM recipes WHERE id = ?", req.params.id);
     const updatedRecipe = {
       ...updated,
+      isPublic: Number(updated.isPublic),
       ingredients: updated.ingredients ? JSON.parse(updated.ingredients) : [],
       instructions: updated.instructions ? JSON.parse(updated.instructions) : [],
       tags: updated.tags ? JSON.parse(updated.tags) : []
@@ -1051,8 +1280,6 @@ app.put("/api/recipes/:id", async (req, res) => {
     res.status(500).json({ error: "Failed to update recipe" });
   }
 });
-
-// Dedicated endpoint to update rating
 
 // Toggle/set favourite status
 app.patch("/api/recipes/:id/favourite", async (req, res) => {
@@ -1083,47 +1310,44 @@ app.patch("/api/recipes/:id/favourite", async (req, res) => {
       tags: updated.tags ? JSON.parse(updated.tags) : []
     };
 
-    res.json({
-      success: true,
-      isFavourite: Boolean(newFav),
-      recipe: updatedRecipe,
-      ...updatedRecipe
-    });
+    res.json(updatedRecipe);
   } catch (err) {
-    console.error("Toggle favourite error:", err);
+    console.error("Update favourite error:", err);
     res.status(500).json({ error: "Failed to update favourite status" });
   }
 });
 
-// Export full database backup as JSON
+// Export JSON Backup
 app.get("/api/export/json", async (req, res) => {
   try {
     const rows = await dbAll("SELECT * FROM recipes ORDER BY id ASC");
     const recipes = rows.map(r => ({
       ...r,
       isFavourite: Boolean(r.isFavourite),
+      isPublic: Number(r.isPublic),
       ingredients: r.ingredients ? JSON.parse(r.ingredients) : [],
       instructions: r.instructions ? JSON.parse(r.instructions) : [],
       tags: r.tags ? JSON.parse(r.tags) : []
     }));
 
-    const filename = `recipes_backup_${new Date().toISOString().slice(0, 10)}.json`;
+    const filename = `recipe_deck_backup_${new Date().toISOString().slice(0, 10)}.json`;
     res.setHeader("Content-Type", "application/json");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-    res.send(JSON.stringify(recipes, null, 2));
+    res.json(recipes);
   } catch (err) {
     console.error("Export JSON error:", err);
-    res.status(500).json({ error: "Failed to export JSON backup" });
+    res.status(500).json({ error: "Failed to export recipes JSON" });
   }
 });
 
-// Export all recipes as a ZIP archive of individual Markdown files (Obsidian/Notion compatible)
+// Export Markdown ZIP Archive
 app.get("/api/export/markdown", async (req, res) => {
   try {
     const rows = await dbAll("SELECT * FROM recipes ORDER BY id ASC");
     const recipes = rows.map(r => ({
       ...r,
       isFavourite: Boolean(r.isFavourite),
+      isPublic: Number(r.isPublic),
       ingredients: r.ingredients ? JSON.parse(r.ingredients) : [],
       instructions: r.instructions ? JSON.parse(r.instructions) : [],
       tags: r.tags ? JSON.parse(r.tags) : []
@@ -1249,6 +1473,10 @@ app.patch("/api/recipes/:id/image", async (req, res) => {
     const existing = await dbGet("SELECT * FROM recipes WHERE id = ?", req.params.id);
     if (!existing) return res.status(404).json({ error: "Recipe not found" });
 
+    if (!checkRecipeOwnership(existing, req.user)) {
+      return res.status(403).json({ error: "Forbidden: You are not the owner of this recipe" });
+    }
+
     await dbRun(
       `UPDATE recipes SET imageAttachment = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`,
       [imageAttachment || null, req.params.id]
@@ -1273,11 +1501,81 @@ app.delete("/api/recipes/:id", async (req, res) => {
     const existing = await dbGet("SELECT * FROM recipes WHERE id = ?", req.params.id);
     if (!existing) return res.status(404).json({ error: "Recipe not found" });
 
+    if (!checkRecipeOwnership(existing, req.user)) {
+      return res.status(403).json({ error: "Forbidden: You are not the owner of this recipe" });
+    }
+
     await dbRun("DELETE FROM recipes WHERE id = ?", req.params.id);
+    await dbRun("DELETE FROM recipe_comments WHERE recipeId = ?", req.params.id);
     res.json({ success: true, message: "Recipe deleted successfully" });
   } catch (err) {
     console.error("Delete recipe error:", err);
     res.status(500).json({ error: "Failed to delete recipe" });
+  }
+});
+
+/* ==========================================================================
+   RECIPE COMMENTS API
+   ========================================================================== */
+
+// GET /api/recipes/:id/comments
+app.get("/api/recipes/:id/comments", async (req, res) => {
+  try {
+    const rows = await dbAll(
+      "SELECT * FROM recipe_comments WHERE recipeId = ? ORDER BY createdAt ASC, id ASC",
+      [req.params.id]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error("Get comments error:", err);
+    res.status(500).json({ error: "Failed to fetch comments" });
+  }
+});
+
+// POST /api/recipes/:id/comments (Authenticated users only)
+app.post("/api/recipes/:id/comments", requireAuth, async (req, res) => {
+  try {
+    const { comment } = req.body || {};
+    if (!comment || typeof comment !== "string" || !comment.trim()) {
+      return res.status(400).json({ error: "Comment text is required" });
+    }
+
+    const recipe = await dbGet("SELECT id FROM recipes WHERE id = ?", req.params.id);
+    if (!recipe) {
+      return res.status(404).json({ error: "Recipe not found" });
+    }
+
+    const cleanComment = comment.trim().slice(0, 1000);
+    const result = await dbRun(
+      "INSERT INTO recipe_comments (recipeId, userId, userDisplayName, comment, createdAt) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)",
+      [req.params.id, req.user.id, req.user.displayName, cleanComment]
+    );
+
+    const inserted = await dbGet("SELECT * FROM recipe_comments WHERE id = ?", result.lastID);
+    res.status(201).json(inserted);
+  } catch (err) {
+    console.error("Add comment error:", err);
+    res.status(500).json({ error: "Failed to post comment" });
+  }
+});
+
+// DELETE /api/comments/:commentId (Comment owner only)
+app.delete("/api/comments/:commentId", requireAuth, async (req, res) => {
+  try {
+    const existing = await dbGet("SELECT * FROM recipe_comments WHERE id = ?", req.params.commentId);
+    if (!existing) {
+      return res.status(404).json({ error: "Comment not found" });
+    }
+
+    if (existing.userId !== req.user.id) {
+      return res.status(403).json({ error: "Forbidden: You can only delete your own comments" });
+    }
+
+    await dbRun("DELETE FROM recipe_comments WHERE id = ?", req.params.commentId);
+    res.json({ success: true, message: "Comment deleted successfully" });
+  } catch (err) {
+    console.error("Delete comment error:", err);
+    res.status(500).json({ error: "Failed to delete comment" });
   }
 });
 

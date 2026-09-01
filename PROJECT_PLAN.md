@@ -60,6 +60,22 @@ A responsive, distraction-free web application that normalises chaotic recipe so
 - [x] **Category & Favourite Filtering:** Star/favourite recipes (`PATCH /api/recipes/:id/favourite`), quick sidebar star toggles, and dedicated 'Favourites Only' filter deck.
 - [x] **Turso Cloud Database:** Unified `@libsql/client` integration with remote synchronization (`scripts/migrate-to-turso.mjs`).
 
-### Phase 4: Full PWA & Local Network Deployment
+### Phase 4: Full PWA & Local Network Deployment (Completed ✅)
 - [x] **Progressive Web App (PWA):** Web manifest and service worker caching for offline access (`public/manifest.json`, `public/sw.js`, and install/offline UI).
 - [ ] **Systemd Service:** Configure auto-start on Linux Mint / Home Server boot.
+
+### Phase 5: Individual User Accounts, Recipe Ownership, Public Feed, and Comments (Completed ✅)
+- [x] **JWT Authentication in Secure HTTP-Only Cookies:**
+  - `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`.
+  - Secure bcrypt password hashing and persistent user table in Turso (`users`).
+- [x] **Recipe Ownership & Visibility Controls:**
+  - `userId` foreign ownership and `isPublic` visibility flags on `recipes` table.
+  - Automatic `userId` association and `isPublic = 1` default on creation and scraping.
+  - Ownership authorization middleware protecting `PUT /api/recipes/:id`, `DELETE /api/recipes/:id`, and `PATCH /api/recipes/:id/image`.
+  - `GET /api/recipes` returns all public recipes + private recipes owned by the active user.
+  - In-app toggle switch in recipe editor for public/private recipe status.
+  - Frontend conditionally reveals Edit/Delete controls exclusively to the recipe owner.
+- [x] **Recipe Comments & Cooking Notes:**
+  - `recipe_comments` table in Turso storing recipe discussion, tips, and notes.
+  - `GET /api/recipes/:id/comments`, `POST /api/recipes/:id/comments` (authenticated), `DELETE /api/comments/:commentId` (comment owner only).
+  - Modern comment section in recipe detail view with live posting and deletion.
