@@ -111,9 +111,13 @@
             <div class="relative mb-3">
               <input id="urlInput" type="url" placeholder="Paste recipe link here (e.g., https://...)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-200" title="Paste web link of the recipe here">
             </div>
-            <button id="scrapeUrlBtn" onclick="handleScrapeUrl()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-lg transition flex justify-center items-center gap-2 cursor-pointer shadow" title="Fetch website and extract recipe">
+            <button id="scrapeUrlBtn" onclick="handleScrapeUrl()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-lg transition flex justify-center items-center gap-2 cursor-pointer shadow mb-2" title="Fetch website and extract recipe">
               <span id="scrapeUrlBtnLabel">🌐 Scrape & Import Recipe</span>
             </button>
+            <div id="urlModeStatus" class="hidden p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg text-xs text-amber-200 flex items-center gap-2">
+              <span class="animate-spin text-sm">⏳</span>
+              <span id="urlModeStatusText">Scraping recipe in the background... It will appear in your collection automatically!</span>
+            </div>
           </div>
 
           <!-- Image / Screenshot Mode Form -->
@@ -165,7 +169,24 @@
           <p id="emptyStateSub" class="text-xs text-slate-500 max-w-sm">Paste recipe text or upload a screenshot on the left, or select a recipe from your collection.</p>
         </div>
 
-        <div id="recipeCard" class="hidden bg-slate-800/90 border border-slate-700 p-6 rounded-2xl shadow-xl print-card">
+        <div id="recipeCard" class="hidden bg-slate-800/90 border border-slate-700 p-6 rounded-2xl shadow-xl print-card transition-all duration-300">
+          <!-- Confirmation Banner for Newly Scraped Recipe -->
+          <div id="newRecipeConfirmBanner" class="hidden mb-4 p-3.5 bg-amber-500/15 border-2 border-amber-500/50 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs shadow-md no-print">
+            <div class="flex items-center gap-2 text-amber-200 font-medium">
+              <span class="text-lg animate-bounce">✨</span>
+              <span id="confirmKeepPromptText">Newly imported recipe — Do you want to keep this in your collection?</span>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <button id="confirmKeepBtn" onclick="confirmKeepActiveRecipe()" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold shadow flex items-center gap-1.5 cursor-pointer transition" title="Keep this recipe in your library">
+                <span>✅</span>
+                <span id="confirmKeepBtnLabel">Keep Recipe</span>
+              </button>
+              <button id="confirmDiscardBtn" onclick="discardActiveScrapedRecipe()" class="px-3.5 py-1.5 bg-rose-600/30 hover:bg-rose-600 text-rose-200 hover:text-white rounded-lg font-semibold border border-rose-500/40 flex items-center gap-1.5 cursor-pointer transition" title="Delete and discard this recipe">
+                <span>🗑️</span>
+                <span id="confirmDiscardBtnLabel">Discard</span>
+              </button>
+            </div>
+          </div>
           <!-- Primary Actions Toolbar -->
           <div class="flex flex-wrap justify-between items-center gap-3 pb-3 mb-3 border-b border-slate-700 no-print">
             <div class="flex items-center bg-slate-900 p-1 rounded-lg border border-slate-700 text-xs font-semibold">
@@ -512,6 +533,8 @@
     </div>
   </div>
 
+  <!-- Floating Background Scraping & Alert Toast -->
+  <div id="bgToastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full px-3 pointer-events-none"></div>
   <script>
     let activeRecipe = null;
     let originalRecipe = null;
@@ -550,6 +573,17 @@
        ========================================================================== */
     const I18N = {
       en: {
+        bgScrapeStarted: "⏳ Scraping recipe in the background... It will appear in your collection automatically once ready!",
+        bgScrapeSuccess: "🎉 Recipe scraped & saved: \"{title}\"!",
+        bgScrapeFailed: "❌ Could not scrape recipe from link",
+        viewAndConfirm: "Review & Keep",
+        confirmKeepPrompt: "✨ Newly imported recipe — Do you want to keep this in your collection?",
+        confirmKeepBtn: "Keep Recipe",
+        confirmDiscardBtn: "Discard",
+        recipeKeptSuccess: "✅ Recipe confirmed and kept in your library!",
+        tipConfirmKeep: "Keep this recipe in your collection",
+        tipConfirmDiscard: "Discard and delete this recipe",
+
         appSubtitle: "Turn any recipe, website link, or photo into clean steps, change serving sizes, and cook step-by-step.",
         help: "Help",
         helpModalTitle: "How to Use Recipe Deck",
@@ -691,6 +725,17 @@
         tipDeleteRecipe: "Delete this recipe from your collection"
       },
       es: {
+        bgScrapeStarted: "⏳ Extrayendo receta en segundo plano... ¡Aparecerá en tu colección cuando esté lista!",
+        bgScrapeSuccess: "🎉 ¡Receta extraída y guardada: \"{title}\"!",
+        bgScrapeFailed: "❌ No se pudo extraer la receta del enlace",
+        viewAndConfirm: "Revisar y Guardar",
+        confirmKeepPrompt: "✨ Receta recién importada — ¿Deseas conservarla en tu colección?",
+        confirmKeepBtn: "Conservar Receta",
+        confirmDiscardBtn: "Descartar",
+        recipeKeptSuccess: "✅ ¡Receta confirmada y guardada en tu biblioteca!",
+        tipConfirmKeep: "Conservar esta receta en tu colección",
+        tipConfirmDiscard: "Descartar y eliminar esta receta",
+
         appSubtitle: "Convierte cualquier receta, enlace o foto en pasos claros, cambia porciones y cocina paso a paso.",
         help: "Ayuda",
         helpModalTitle: "Cómo usar Recipe Deck",
@@ -832,6 +877,17 @@
         tipDeleteRecipe: "Eliminar esta receta de tu colección"
       },
       fr: {
+        bgScrapeStarted: "⏳ Extraction de la recette en arrière-plan... Elle apparaîtra dans votre carnet dès qu'elle sera prête !",
+        bgScrapeSuccess: "🎉 Recette importée et enregistrée : « {title} » !",
+        bgScrapeFailed: "❌ Impossible d'importer la recette depuis ce lien",
+        viewAndConfirm: "Vérifier et garder",
+        confirmKeepPrompt: "✨ Recette fraîchement importée — Souhaitez-vous la conserver dans votre carnet ?",
+        confirmKeepBtn: "Garder la recette",
+        confirmDiscardBtn: "Supprimer",
+        recipeKeptSuccess: "✅ Recette confirmée et conservée dans votre carnet !",
+        tipConfirmKeep: "Conserver cette recette dans votre carnet",
+        tipConfirmDiscard: "Supprimer et abandonner cette recette",
+
         appSubtitle: "Transformez vos recettes, liens web et photos en étapes claires, ajustez les portions et cuisinez sereinement.",
         help: "Aide",
         helpModalTitle: "Comment utiliser Recipe Deck",
@@ -973,6 +1029,17 @@
         tipDeleteRecipe: "Supprimer cette recette du carnet"
       },
       de: {
+        bgScrapeStarted: "⏳ Rezept wird im Hintergrund importiert... Es erscheint automatisch in deiner Sammlung!",
+        bgScrapeSuccess: "🎉 Rezept erfolgreich importiert: „{title}“!",
+        bgScrapeFailed: "❌ Rezept konnte nicht vom Link importiert werden",
+        viewAndConfirm: "Prüfen & Behalten",
+        confirmKeepPrompt: "✨ Neu importiertes Rezept — Möchtest du es in deiner Sammlung behalten?",
+        confirmKeepBtn: "Rezept behalten",
+        confirmDiscardBtn: "Verwerfen",
+        recipeKeptSuccess: "✅ Rezept bestätigt und in deiner Sammlung behalten!",
+        tipConfirmKeep: "Dieses Rezept in der Sammlung behalten",
+        tipConfirmDiscard: "Rezept verwerfen und löschen",
+
         appSubtitle: "Verwandle Rezepte, Links und Fotos in einfache Schritte, passe Portionen an und koche entspannt.",
         help: "Hilfe",
         helpModalTitle: "So benutzt du Recipe Deck",
@@ -1114,6 +1181,17 @@
         tipDeleteRecipe: "Dieses Rezept aus der Sammlung löschen"
       },
       it: {
+        bgScrapeStarted: "⏳ Estrazione ricetta in background... Apparirà automaticamente nella tua raccolta!",
+        bgScrapeSuccess: "🎉 Ricetta estratta e salvata: \"{title}\"!",
+        bgScrapeFailed: "❌ Impossibile estrarre la ricetta dal link",
+        viewAndConfirm: "Rivedi e Mantieni",
+        confirmKeepPrompt: "✨ Ricetta appena importata — Desideri mantenerla nella tua raccolta?",
+        confirmKeepBtn: "Mantieni Ricetta",
+        confirmDiscardBtn: "Scarta",
+        recipeKeptSuccess: "✅ Ricetta confermata e salvata nella tua raccolta!",
+        tipConfirmKeep: "Mantieni questa ricetta nella tua raccolta",
+        tipConfirmDiscard: "Scarta ed elimina questa ricetta",
+
         appSubtitle: "Trasforma qualsiasi ricetta, link o foto in passaggi chiari, adatta le dosi e cucina passo dopo passo.",
         help: "Guida",
         helpModalTitle: "Come usare Recipe Deck",
@@ -1255,6 +1333,17 @@
         tipDeleteRecipe: "Elimina questa ricetta dalla raccolta"
       },
       th: {
+        bgScrapeStarted: "⏳ กำลังดึงสูตรอาหารในพื้นหลัง... สูตรจะปรากฏในคลังของคุณโดยอัตโนมัติเมื่อเสร็จสิ้น!",
+        bgScrapeSuccess: "🎉 ดึงและบันทึกสูตรเรียบร้อยแล้ว: \"{title}\"!",
+        bgScrapeFailed: "❌ ไม่สามารถดึงสูตรอาหารจากลิงก์ได้",
+        viewAndConfirm: "ตรวจสอบและเก็บไว้",
+        confirmKeepPrompt: "✨ สูตรอาหารที่เพิ่งนำเข้า — คุณต้องการเก็บสูตรนี้ไว้ในคลังของคุณหรือไม่?",
+        confirmKeepBtn: "เก็บสูตรนี้ไว้",
+        confirmDiscardBtn: "ละทิ้ง",
+        recipeKeptSuccess: "✅ ยืนยันและเก็บสูตรอาหารไว้ในคลังเรียบร้อยแล้ว!",
+        tipConfirmKeep: "เก็บสูตรนี้ไว้ในคลังของคุณ",
+        tipConfirmDiscard: "ละทิ้งและลบสูตรนี้",
+
         appSubtitle: "เปลี่ยนข้อความ ลิงก์เว็บ หรือรูปภาพเป็นขั้นตอนที่เข้าใจง่าย ปรับขนาดที่เสิร์ฟ และทำอาหารตามทีละขั้น",
         help: "ช่วยเหลือ",
         helpModalTitle: "วิธีใช้งาน Recipe Deck",
@@ -1396,6 +1485,17 @@
         tipDeleteRecipe: "ลบสูตรอาหารนี้ออกจากคลัง"
       },
       ja: {
+        bgScrapeStarted: "⏳ バックグラウンドでレシピを取得中... 完了するとコレクションに自動で追加されます！",
+        bgScrapeSuccess: "🎉 レシピの取得と保存が完了しました: 「{title}」！",
+        bgScrapeFailed: "❌ URLからレシピを取得できませんでした",
+        viewAndConfirm: "確認して保存",
+        confirmKeepPrompt: "✨ 新しく取り込んだレシピです — コレクションに保存しますか？",
+        confirmKeepBtn: "レシピを保存する",
+        confirmDiscardBtn: "破棄する",
+        recipeKeptSuccess: "✅ レシピを確認し、コレクションに保存しました！",
+        tipConfirmKeep: "このレシピをコレクションに保存",
+        tipConfirmDiscard: "このレシピを破棄して削除",
+
         appSubtitle: "テキスト、Webリンク、写真からレシピを抽出し、人数分量を自動計算して手順通りに調理できます。",
         help: "ヘルプ",
         helpModalTitle: "Recipe Deck の使い方",
@@ -1537,6 +1637,17 @@
         tipDeleteRecipe: "このレシピをコレクションから削除"
       },
       vi: {
+        bgScrapeStarted: "⏳ Đang trích xuất công thức ở chế độ nền... Công thức sẽ tự động xuất hiện trong bộ sưu tập khi hoàn tất!",
+        bgScrapeSuccess: "🎉 Đã trích xuất và lưu công thức: \"{title}\"!",
+        bgScrapeFailed: "❌ Không thể trích xuất công thức từ liên kết",
+        viewAndConfirm: "Xem & Giữ lại",
+        confirmKeepPrompt: "✨ Công thức mới nhập — Bạn có muốn giữ lại trong bộ sưu tập không?",
+        confirmKeepBtn: "Giữ công thức",
+        confirmDiscardBtn: "Hủy bỏ",
+        recipeKeptSuccess: "✅ Đã xác nhận và lưu công thức vào bộ sưu tập!",
+        tipConfirmKeep: "Giữ công thức này trong bộ sưu tập",
+        tipConfirmDiscard: "Hủy bỏ và xóa công thức này",
+
         appSubtitle: "Biến mọi công thức, liên kết web hoặc hình ảnh thành các bước dễ hiểu, thay đổi khẩu phần và nấu ăn từng bước một.",
         help: "Trợ giúp",
         helpModalTitle: "Cách sử dụng Recipe Deck",
@@ -1678,6 +1789,17 @@
         tipDeleteRecipe: "Xóa công thức này khỏi bộ sưu tập"
       },
       zh: {
+        bgScrapeStarted: "⏳ 正在后台智能抓取食谱... 完成后将自动保存并显示在您的收藏中！",
+        bgScrapeSuccess: "🎉 食谱抓取并自动保存成功：\"{title}\"！",
+        bgScrapeFailed: "❌ 无法从该链接抓取食谱",
+        viewAndConfirm: "查看并保留",
+        confirmKeepPrompt: "✨ 新导入的食谱 — 是否保留在您的收藏中？",
+        confirmKeepBtn: "保留此食谱",
+        confirmDiscardBtn: "放弃删除",
+        recipeKeptSuccess: "✅ 已确认并保留在您的食谱库中！",
+        tipConfirmKeep: "将此食谱保留在收藏中",
+        tipConfirmDiscard: "放弃并删除此食谱",
+
         appSubtitle: "智能识别食谱、网页链接与照片，一键调整份量，大字步骤助您轻松下厨。",
         help: "帮助",
         helpModalTitle: "如何使用 Recipe Deck",
@@ -1819,6 +1941,17 @@
         tipDeleteRecipe: "从收藏夹中删除此食谱"
       },
       pt: {
+        bgScrapeStarted: "⏳ Extraindo receita em segundo plano... Ela aparecerá na sua coleção assim que estiver pronta!",
+        bgScrapeSuccess: "🎉 Receita extraída e salva: \"{title}\"!",
+        bgScrapeFailed: "❌ Não foi possível extrair a receita do link",
+        viewAndConfirm: "Revisar e Manter",
+        confirmKeepPrompt: "✨ Receita recém-importada — Deseja mantê-la na sua coleção?",
+        confirmKeepBtn: "Manter Receita",
+        confirmDiscardBtn: "Descartar",
+        recipeKeptSuccess: "✅ Receita confirmada e mantida na sua coleção!",
+        tipConfirmKeep: "Manter esta receita na sua coleção",
+        tipConfirmDiscard: "Descartar e excluir esta receita",
+
         appSubtitle: "Transforme qualquer receita, link ou foto em passos fáceis, ajuste porções e cozinhe passo a passo.",
         help: "Ajuda",
         helpModalTitle: "Como usar o Recipe Deck",
@@ -1994,6 +2127,88 @@
     function closeHelpModal() {
       const modal = document.getElementById("helpModal");
       if (modal) modal.classList.add("hidden");
+    }
+
+
+    // Set of recipe IDs pending user confirmation to Keep
+    function getNewlyScrapedIds() {
+      try {
+        return new Set(JSON.parse(localStorage.getItem("recipe_deck_newly_scraped") || "[]"));
+      } catch (e) {
+        return new Set();
+      }
+    }
+
+    let newlyScrapedIds = getNewlyScrapedIds();
+
+    function saveNewlyScrapedIds() {
+      localStorage.setItem("recipe_deck_newly_scraped", JSON.stringify(Array.from(newlyScrapedIds)));
+    }
+
+    function confirmKeepActiveRecipe() {
+      if (!activeRecipe || !activeRecipe.id) return;
+      newlyScrapedIds.delete(activeRecipe.id);
+      saveNewlyScrapedIds();
+      renderRecipe();
+      filterSavedRecipes();
+      showBackgroundNotification("info", t("recipeKeptSuccess"));
+    }
+
+    async function discardActiveScrapedRecipe() {
+      if (!activeRecipe || !activeRecipe.id) return;
+      const idToDelete = activeRecipe.id;
+      newlyScrapedIds.delete(idToDelete);
+      saveNewlyScrapedIds();
+      await deleteRecipe(idToDelete, { stopPropagation: () => {} });
+    }
+
+    function showBackgroundNotification(type, message, targetRecipeId = null) {
+      const container = document.getElementById("bgToastContainer");
+      if (!container) return;
+
+      const toast = document.createElement("div");
+      toast.className = "pointer-events-auto p-3.5 bg-slate-900/95 border rounded-xl shadow-2xl flex items-center justify-between gap-3 text-xs text-slate-100 backdrop-blur transition-all duration-300 transform translate-y-2 opacity-0";
+
+      let icon = "⏳";
+      let borderClass = "border-amber-500/60";
+      if (type === "success") {
+        icon = "🎉";
+        borderClass = "border-emerald-500/70 shadow-[0_0_15px_rgba(16,185,129,0.2)]";
+      } else if (type === "error") {
+        icon = "❌";
+        borderClass = "border-rose-500/70";
+      } else if (type === "info") {
+        icon = "✅";
+        borderClass = "border-sky-500/70";
+      }
+      toast.classList.add(...borderClass.split(" "));
+
+      const actionBtn = targetRecipeId 
+        ? '<button onclick="loadSavedRecipe(' + targetRecipeId + '); this.closest('.pointer-events-auto').remove();" class="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-[11px] shrink-0 cursor-pointer shadow transition">' + t("viewAndConfirm") + '</button>'
+        : "";
+
+      toast.innerHTML = 
+        '<div class="flex items-center gap-2.5 min-w-0">' +
+          '<span class="text-base shrink-0 ' + (type === 'progress' ? 'animate-spin' : '') + '">' + icon + '</span>' +
+          '<span class="leading-snug break-words">' + message + '</span>' +
+        '</div>' +
+        '<div class="flex items-center gap-1.5 shrink-0">' +
+          actionBtn +
+          '<button onclick="this.closest('.pointer-events-auto').remove()" class="p-1 text-slate-400 hover:text-white rounded cursor-pointer">✕</button>' +
+        '</div>';
+
+      container.appendChild(toast);
+      requestAnimationFrame(() => {
+        toast.classList.remove("translate-y-2", "opacity-0");
+      });
+
+      const timeoutMs = type === "progress" ? 35000 : 9000;
+      setTimeout(() => {
+        if (toast.parentNode) {
+          toast.classList.add("opacity-0", "translate-y-2");
+          setTimeout(() => toast.remove(), 300);
+        }
+      }, timeoutMs);
     }
 
     function applySiteLanguage(lang) {
@@ -2316,39 +2531,98 @@
         return alert(t("enterValidUrl"));
       }
 
-      const btn = document.getElementById("scrapeUrlBtn");
-      btn.innerHTML = `<span>${t("scrapingUrl")}</span>`;
-      btn.disabled = true;
-
+      let parsedUrl;
       try {
-        const res = await fetch("/api/scrape", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url })
-        });
-
-        if (!res.ok) {
-          let errorMsg = `Server error (${res.status})`;
-          try {
-            const errData = await res.json();
-            if (errData.error) errorMsg = errData.error;
-          } catch (e) {
-            const raw = await res.text();
-            if (raw) errorMsg = raw.slice(0, 150);
-          }
-          throw new Error(errorMsg);
-        }
-
-        const data = await res.json();
-        if (data.error) throw new Error(data.error);
-
-        loadRecipeIntoView(data);
-      } catch (err) {
-        alert("Error importing recipe from link: " + err.message);
-      } finally {
-        btn.innerHTML = `<span id="scrapeUrlBtnLabel">${t("scrapeUrl")}</span>`;
-        btn.disabled = false;
+        parsedUrl = new URL(url);
+        if (!["http:", "https:"].includes(parsedUrl.protocol)) throw new Error();
+      } catch (e) {
+        return alert(t("enterValidUrl"));
       }
+
+      // Clear input so user is immediately ready for next action
+      urlInput.value = "";
+
+      // Show in-form status and floating background notification
+      const formStatus = document.getElementById("urlModeStatus");
+      const formStatusText = document.getElementById("urlModeStatusText");
+      if (formStatus && formStatusText) {
+        formStatusText.innerText = t("bgScrapeStarted");
+        formStatus.classList.remove("hidden");
+      }
+
+      showBackgroundNotification("progress", t("bgScrapeStarted"));
+
+      // Run scraping and database save in background without locking UI
+      (async () => {
+        try {
+          const res = await fetch("/api/scrape", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url })
+          });
+
+          if (!res.ok) {
+            let errorMsg = "Server error (" + res.status + ")";
+            try {
+              const errData = await res.json();
+              if (errData.error) errorMsg = errData.error;
+            } catch (e) {
+              const raw = await res.text();
+              if (raw) errorMsg = raw.slice(0, 150);
+            }
+            throw new Error(errorMsg);
+          }
+
+          const scrapedData = await res.json();
+          if (scrapedData.error) throw new Error(scrapedData.error);
+
+          // Automatically persist to SQLite database
+          let savedRecipe;
+          try {
+            const saveRes = await fetch("/api/recipes", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(scrapedData)
+            });
+            if (saveRes.ok) {
+              savedRecipe = await saveRes.json();
+            }
+          } catch (saveErr) {
+            console.warn("Backend auto-save failed, saving to local cache:", saveErr);
+          }
+
+          if (!savedRecipe) {
+            scrapedData.id = Date.now();
+            savedRecipe = scrapedData;
+            const local = getStoredRecipes();
+            local.unshift(savedRecipe);
+            localStorage.setItem("recipe_deck_items", JSON.stringify(local));
+            cachedSavedRecipes = local;
+          }
+
+          // Mark as newly scraped for Keep confirmation highlight
+          newlyScrapedIds.add(savedRecipe.id);
+          saveNewlyScrapedIds();
+
+          // Refresh collection sidebar
+          await updateSavedUI();
+
+          // If no recipe is currently active on screen, auto-load the newly scraped recipe with highlight
+          const emptyState = document.getElementById("emptyState");
+          if (!activeRecipe || (emptyState && !emptyState.classList.contains("hidden"))) {
+            loadSavedRecipe(savedRecipe.id);
+          }
+
+          // Show success toast with Review & Keep button
+          const successMsg = t("bgScrapeSuccess").replace("{title}", savedRecipe.title || "Recipe");
+          showBackgroundNotification("success", successMsg, savedRecipe.id);
+        } catch (err) {
+          console.error("Background scrape error:", err);
+          showBackgroundNotification("error", t("bgScrapeFailed") + ": " + err.message);
+        } finally {
+          if (formStatus) formStatus.classList.add("hidden");
+        }
+      })();
     }
 
     function handleFileSelected(event) {
@@ -2869,6 +3143,21 @@
 
     function renderRecipe() {
       if (!activeRecipe) return;
+
+      // Highlight newly scraped recipe with confirmation banner
+      const confirmBanner = document.getElementById("newRecipeConfirmBanner");
+      const recipeCardEl = document.getElementById("recipeCard");
+      if (confirmBanner && recipeCardEl) {
+        if (activeRecipe.id && newlyScrapedIds.has(activeRecipe.id)) {
+          confirmBanner.classList.remove("hidden");
+          recipeCardEl.classList.add("ring-2", "ring-amber-400", "shadow-[0_0_25px_rgba(245,158,11,0.2)]");
+          const promptText = document.getElementById("confirmKeepPromptText");
+          if (promptText) promptText.innerText = t("confirmKeepPrompt");
+        } else {
+          confirmBanner.classList.add("hidden");
+          recipeCardEl.classList.remove("ring-2", "ring-amber-400", "shadow-[0_0_25px_rgba(245,158,11,0.2)]");
+        }
+      }
 
       document.getElementById("recipeTitle").innerText = activeRecipe.title;
       document.getElementById("prepMeta").innerText = `${t("prep")}: ${activeRecipe.prepTimeMinutes || 0}m`;
@@ -3753,13 +4042,25 @@
           diffBadge = `<span class="px-1.5 py-0.2 rounded bg-rose-500/10 text-rose-400 text-[10px]">🔴 ${t("diffHard")}</span>`;
         }
 
+        const isNewScraped = newlyScrapedIds.has(r.id);
+        const itemHighlightClass = isNewScraped 
+          ? "border-amber-400 bg-amber-500/10 shadow-[0_0_12px_rgba(245,158,11,0.25)] ring-1 ring-amber-400" 
+          : "border-slate-800 bg-slate-900/80 hover:bg-slate-700/60";
+
+        const newBadge = isNewScraped 
+          ? `<span class="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 font-extrabold text-[10px] animate-pulse shrink-0">✨ NEW</span>`
+          : '';
+
         return `
-          <div onclick="loadSavedRecipe(${r.id})" class="flex items-center gap-3 p-2 bg-slate-900/80 hover:bg-slate-700/60 rounded-xl cursor-pointer border border-slate-800 transition group" title="${t("tipOpenRecipe")}: ${r.title}">
+          <div onclick="loadSavedRecipe(${r.id})" class="flex items-center gap-3 p-2 rounded-xl cursor-pointer border transition group ${itemHighlightClass}" title="${t("tipOpenRecipe")}: ${r.title}">
             ${thumb}
             <div class="flex-1 min-w-0">
               <div class="font-medium text-slate-200 truncate text-sm flex items-center justify-between gap-1">
                 <span class="truncate">${r.title}</span>
-                ${ratingBadge}
+                <div class="flex items-center gap-1 shrink-0">
+                  ${newBadge}
+                  ${ratingBadge}
+                </div>
               </div>
               <div class="text-[11px] text-slate-400 flex items-center gap-1.5 flex-wrap mt-0.5">
                 <span>${r.servings || 4} ${t("serv")}</span>
