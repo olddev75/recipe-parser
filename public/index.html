@@ -35,13 +35,13 @@
     <header class="flex flex-wrap justify-between items-center gap-4 mb-8 border-b border-slate-800 pb-4 no-print">
       <div>
         <h1 class="text-2xl font-bold tracking-tight text-amber-400">📖 Recipe Deck</h1>
-        <p id="appSubtitleText" class="text-sm text-slate-400">Clean extraction, live unit conversions, photo attachments, tags, and interactive Cook Mode</p>
+        <p id="appSubtitleText" class="text-sm text-slate-400">Turn any recipe or photo into clean steps, change serving sizes, and cook step-by-step.</p>
       </div>
       <div class="flex items-center gap-3 flex-wrap">
         <!-- Site Language Selector -->
-        <div class="flex items-center bg-slate-800/90 border border-slate-700 rounded-lg px-2.5 py-1.5 shadow-sm">
+        <div id="siteLanguageContainer" class="flex items-center bg-slate-800/90 border border-slate-700 rounded-lg px-2.5 py-1.5 shadow-sm" title="Choose your preferred language">
           <span class="text-xs text-slate-400 mr-1.5">🌐</span>
-          <select id="siteLanguageSelect" onchange="changeSiteLanguage(this.value)" class="bg-transparent text-slate-200 text-xs font-semibold focus:outline-none cursor-pointer pr-1">
+          <select id="siteLanguageSelect" onchange="changeSiteLanguage(this.value)" class="bg-transparent text-slate-200 text-xs font-semibold focus:outline-none cursor-pointer pr-1" title="Choose your preferred language">
             <option value="en">English (EN)</option>
             <option value="es">Español (ES)</option>
             <option value="fr">Français (FR)</option>
@@ -55,11 +55,20 @@
           </select>
         </div>
 
-        <button onclick="addNextRecipe()" id="headerAddRecipeBtn" class="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow">
+        <!-- Help Button -->
+        <button onclick="openHelpModal()" id="headerHelpBtn" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow cursor-pointer" title="Learn how to use Recipe Deck">
+          <span>❓</span>
+          <span id="headerHelpLabel">Help</span>
+        </button>
+
+        <!-- Add Recipe Button -->
+        <button onclick="addNextRecipe()" id="headerAddRecipeBtn" class="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow cursor-pointer" title="Clear the screen and start adding a new recipe">
           <span>➕</span>
           <span id="headerAddRecipeLabel">Add Recipe</span>
         </button>
-        <div class="text-sm font-medium bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
+
+        <!-- Saved Count Badge -->
+        <div id="savedCountBadge" class="text-sm font-medium bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700" title="Total recipes saved in your library">
           <span id="savedCountPrefix">Saved</span>: <span id="savedCount" class="text-amber-400 font-bold">0</span>
         </div>
       </div>
@@ -72,21 +81,21 @@
         <div class="bg-slate-800/80 p-5 rounded-xl border border-slate-700 shadow-md">
           
           <div class="flex border-b border-slate-700 mb-4 text-xs font-semibold">
-            <button id="tabTextBtn" onclick="switchTab('text')" class="flex-1 pb-2 border-b-2 border-amber-500 text-amber-400 font-bold">📝 Text / Caption</button>
-            <button id="tabImageBtn" onclick="switchTab('image')" class="flex-1 pb-2 text-slate-400 hover:text-white">📸 Screenshot / Photo</button>
+            <button id="tabTextBtn" onclick="switchTab('text')" class="flex-1 pb-2 border-b-2 border-amber-500 text-amber-400 font-bold" title="Type or paste recipe text here">📝 Text / Caption</button>
+            <button id="tabImageBtn" onclick="switchTab('image')" class="flex-1 pb-2 text-slate-400 hover:text-white" title="Upload a photo or screenshot of a recipe">📸 Screenshot / Photo</button>
           </div>
 
           <!-- Text Mode Form -->
           <div id="textMode">
-            <textarea id="rawInput" rows="6" placeholder="Paste full post, Instagram caption, or ingredients list here..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-200 resize-y mb-3"></textarea>
-            <button id="parseTextBtn" onclick="handleParseText()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-lg transition flex justify-center items-center gap-2">
+            <textarea id="rawInput" rows="6" placeholder="Paste recipe text, social media post, or ingredients here..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-200 resize-y mb-3" title="Paste your recipe text or ingredients list here"></textarea>
+            <button id="parseTextBtn" onclick="handleParseText()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-lg transition flex justify-center items-center gap-2 cursor-pointer shadow" title="Read the text and turn it into a clean recipe">
               <span id="parseTextBtnLabel">✨ Format & Parse Text</span>
             </button>
           </div>
 
           <!-- Image / Screenshot Mode Form -->
           <div id="imageMode" class="hidden">
-            <div id="dropZone" onclick="document.getElementById('imageFileInput').click()" class="border-2 border-dashed border-slate-600 hover:border-amber-500 bg-slate-900/60 rounded-lg p-6 text-center cursor-pointer transition mb-3">
+            <div id="dropZone" onclick="document.getElementById('imageFileInput').click()" class="border-2 border-dashed border-slate-600 hover:border-amber-500 bg-slate-900/60 rounded-lg p-6 text-center cursor-pointer transition mb-3" title="Click or drag a recipe photo here">
               <input type="file" id="imageFileInput" accept="image/*" class="hidden" onchange="handleFileSelected(event)">
               <div id="previewContainer" class="hidden mb-3 flex justify-center">
                 <img id="imagePreview" class="max-h-44 rounded-lg object-contain border border-slate-700">
@@ -97,7 +106,7 @@
                 <p id="dropPromptSub" class="text-[11px] text-slate-400 mt-1">JPEG, PNG, WebP supported</p>
               </div>
             </div>
-            <button id="parseImageBtn" onclick="handleParseImage()" disabled class="w-full bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-bold py-2.5 rounded-lg transition flex justify-center items-center gap-2">
+            <button id="parseImageBtn" onclick="handleParseImage()" disabled class="w-full bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-bold py-2.5 rounded-lg transition flex justify-center items-center gap-2 cursor-pointer shadow" title="Read the photo and turn it into a clean recipe">
               <span id="parseImageBtnLabel">🔍 OCR & Extract Recipe</span>
             </button>
           </div>
@@ -108,12 +117,12 @@
         <div class="bg-slate-800/80 p-5 rounded-xl border border-slate-700 shadow-md">
           <div class="flex items-center justify-between mb-3">
             <h3 id="collectionTitleText" class="text-sm font-semibold text-slate-200">Your Recipe Collection</h3>
-            <span id="collectionDbBadge" class="text-[11px] text-slate-400">SQLite Database</span>
+            <span id="collectionDbBadge" class="text-[11px] text-slate-400" title="All recipes are saved in your local database">SQLite Database</span>
           </div>
 
           <!-- Live Search Input -->
           <div class="mb-2.5">
-            <input id="sidebarSearchInput" type="text" placeholder="🔍 Search recipes, ingredients, or tags..." oninput="filterSavedRecipes()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-500">
+            <input id="sidebarSearchInput" type="text" placeholder="🔍 Search recipes, ingredients, or tags..." oninput="filterSavedRecipes()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-500" title="Type a word to search recipe names, ingredients, or tags">
           </div>
 
           <!-- Dynamic Tag Filter Pills -->
@@ -137,39 +146,39 @@
           <!-- Primary Actions Toolbar -->
           <div class="flex flex-wrap justify-between items-center gap-3 pb-3 mb-3 border-b border-slate-700 no-print">
             <div class="flex items-center bg-slate-900 p-1 rounded-lg border border-slate-700 text-xs font-semibold">
-              <button id="btnMetric" onclick="setUnitSystem('metric')" class="px-3 py-1.5 rounded-md bg-amber-500 text-slate-950 font-bold">Metric (g / ml)</button>
-              <button id="btnImperial" onclick="setUnitSystem('imperial')" class="px-3 py-1.5 rounded-md text-slate-400 hover:text-white">Imperial (oz / cups)</button>
+              <button id="btnMetric" onclick="setUnitSystem('metric')" class="px-3 py-1.5 rounded-md bg-amber-500 text-slate-950 font-bold cursor-pointer" title="Show amounts in grams and milliliters">Metric (g / ml)</button>
+              <button id="btnImperial" onclick="setUnitSystem('imperial')" class="px-3 py-1.5 rounded-md text-slate-400 hover:text-white cursor-pointer" title="Show amounts in ounces and cups">Imperial (oz / cups)</button>
             </div>
 
             <div class="flex items-center gap-2 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-700 text-xs">
               <span id="servingsLabelText" class="text-slate-400">Servings:</span>
-              <button onclick="scaleServings(-1)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-amber-400 font-bold">-</button>
+              <button onclick="scaleServings(-1)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-amber-400 font-bold cursor-pointer" title="Make fewer servings">-</button>
               <span id="currentServings" class="font-bold px-1 text-white">4</span>
-              <button onclick="scaleServings(1)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-amber-400 font-bold">+</button>
+              <button onclick="scaleServings(1)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-amber-400 font-bold cursor-pointer" title="Make more servings">+</button>
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
-              <button onclick="enterCookMode()" class="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1.5 shadow transition">
+              <button onclick="enterCookMode()" id="cookModeBtn" class="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1.5 shadow transition cursor-pointer" title="Open big screen step-by-step cooking mode">
                 <span>🍳</span>
                 <span id="cookModeBtnLabel">Cook Mode</span>
               </button>
-              <button onclick="saveCurrentRecipe()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1">
+              <button onclick="saveCurrentRecipe()" id="saveBtn" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer shadow" title="Save this recipe to your library">
                 <span>💾</span>
                 <span id="saveBtnLabel">Save to SQLite</span>
               </button>
-              <button onclick="window.print()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-semibold transition">
+              <button onclick="window.print()" id="printBtn" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-semibold transition cursor-pointer" title="Print this recipe or save as a PDF">
                 <span>🖨️</span>
                 <span id="printBtnLabel">Print</span>
               </button>
-              <button onclick="addNextRecipe()" class="px-3 py-1.5 bg-slate-700 hover:bg-amber-500 hover:text-slate-950 text-slate-200 rounded-lg text-xs font-semibold transition flex items-center gap-1" title="Clear view and add next recipe">
+              <button onclick="addNextRecipe()" id="addNextBtn" class="px-3 py-1.5 bg-slate-700 hover:bg-amber-500 hover:text-slate-950 text-slate-200 rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer" title="Clear screen to add another new recipe">
                 <span>➕</span>
                 <span id="addNextBtnLabel">Add Next</span>
               </button>
-              <button onclick="deleteActiveRecipe()" class="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 rounded-lg text-xs font-semibold transition flex items-center gap-1" title="Delete this recipe">
+              <button onclick="deleteActiveRecipe()" id="deleteBtn" class="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer" title="Delete this recipe">
                 <span>🗑️</span>
                 <span id="deleteBtnLabel">Delete</span>
               </button>
-              <button onclick="closeActiveRecipe()" class="p-1.5 bg-slate-800 hover:bg-rose-600/30 text-slate-400 hover:text-rose-300 rounded-lg text-xs transition" title="Close recipe view">
+              <button onclick="closeActiveRecipe()" id="closeRecipeBtn" class="p-1.5 bg-slate-800 hover:bg-rose-600/30 text-slate-400 hover:text-rose-300 rounded-lg text-xs transition cursor-pointer" title="Close recipe view">
                 ✕
               </button>
             </div>
@@ -188,11 +197,11 @@
                   <span id="photoAttachedLabel">Attached Photo</span>
                 </span>
                 <div class="flex gap-2">
-                  <button onclick="document.getElementById('recipePhotoFileInput').click()" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow">
+                  <button id="changePhotoBtn" onclick="document.getElementById('recipePhotoFileInput').click()" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow cursor-pointer" title="Pick a new photo for this recipe">
                     <span>📷</span>
                     <span id="changePhotoLabel">Change Photo</span>
                   </button>
-                  <button onclick="removeRecipePhoto()" class="px-3 py-1.5 bg-rose-600/90 hover:bg-rose-600 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow">
+                  <button id="removePhotoBtn" onclick="removeRecipePhoto()" class="px-3 py-1.5 bg-rose-600/90 hover:bg-rose-600 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow cursor-pointer" title="Remove this photo from the recipe">
                     <span>🗑️</span>
                     <span id="removePhotoLabel">Remove</span>
                   </button>
@@ -202,7 +211,7 @@
 
             <!-- When No Photo is Attached -->
             <div id="recipePhotoAddContainer" class="no-print mb-3">
-              <div id="recipePhotoDropZone" onclick="document.getElementById('recipePhotoFileInput').click()" class="border-2 border-dashed border-slate-700 hover:border-amber-500/80 bg-slate-900/40 hover:bg-slate-900/80 rounded-xl p-3 text-center cursor-pointer transition flex items-center justify-center gap-2 text-slate-400 hover:text-amber-400 text-xs font-semibold">
+              <div id="recipePhotoDropZone" onclick="document.getElementById('recipePhotoFileInput').click()" class="border-2 border-dashed border-slate-700 hover:border-amber-500/80 bg-slate-900/40 hover:bg-slate-900/80 rounded-xl p-3 text-center cursor-pointer transition flex items-center justify-center gap-2 text-slate-400 hover:text-amber-400 text-xs font-semibold" title="Add a picture of this recipe (automatically resized)">
                 <span class="text-base">📷</span>
                 <span id="recipePhotoDropPromptText">Add / Drag Recipe Photo (Auto-resized max 1200px)</span>
               </div>
@@ -212,7 +221,7 @@
           <!-- Recipe Title & Reset Controls -->
           <div class="flex items-start justify-between gap-4 mb-2">
             <h2 id="recipeTitle" class="text-2xl font-bold text-amber-400"></h2>
-            <button id="resetChecksBtn" onclick="resetProgress()" class="no-print text-xs text-slate-400 hover:text-amber-400 px-2 py-1 rounded bg-slate-900/60 border border-slate-700/60 transition shrink-0" title="Reset all checkboxes">
+            <button id="resetChecksBtn" onclick="resetProgress()" class="no-print text-xs text-slate-400 hover:text-amber-400 px-2 py-1 rounded bg-slate-900/60 border border-slate-700/60 transition shrink-0 cursor-pointer" title="Clear all checkmarks on ingredients and steps">
               🔄 Reset Checks
             </button>
           </div>
@@ -232,7 +241,7 @@
               <!-- Difficulty Button -->
               <div class="flex items-center gap-1.5">
                 <span id="difficultyPrefixLabel" class="text-slate-400 font-medium">Difficulty:</span>
-                <button id="difficultyBtn" onclick="cycleDifficulty()" class="px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm border bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:scale-105" title="Click to change difficulty">
+                <button id="difficultyBtn" onclick="cycleDifficulty()" class="px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm border bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:scale-105 cursor-pointer" title="Click to switch difficulty between Easy, Medium, and Hard">
                   <span id="difficultyIcon">🟢</span>
                   <span id="difficultyLabel">Easy</span>
                 </button>
@@ -241,12 +250,12 @@
               <!-- 5-Star Rating Buttons -->
               <div class="flex items-center gap-1.5">
                 <span id="ratingPrefixLabel" class="text-slate-400 font-medium">Rating:</span>
-                <div id="starRatingContainer" class="flex items-center bg-slate-900 px-2 py-0.5 rounded-lg border border-slate-700/80 gap-0.5 cursor-pointer">
-                  <button type="button" onclick="setRecipeRating(1)" class="star-btn text-base transition hover:scale-125 focus:outline-none text-slate-600 hover:text-amber-400" title="1 Star">☆</button>
-                  <button type="button" onclick="setRecipeRating(2)" class="star-btn text-base transition hover:scale-125 focus:outline-none text-slate-600 hover:text-amber-400" title="2 Stars">☆</button>
-                  <button type="button" onclick="setRecipeRating(3)" class="star-btn text-base transition hover:scale-125 focus:outline-none text-slate-600 hover:text-amber-400" title="3 Stars">☆</button>
-                  <button type="button" onclick="setRecipeRating(4)" class="star-btn text-base transition hover:scale-125 focus:outline-none text-slate-600 hover:text-amber-400" title="4 Stars">☆</button>
-                  <button type="button" onclick="setRecipeRating(5)" class="star-btn text-base transition hover:scale-125 focus:outline-none text-slate-600 hover:text-amber-400" title="5 Stars">☆</button>
+                <div id="starRatingContainer" class="flex items-center bg-slate-900 px-2 py-0.5 rounded-lg border border-slate-700/80 gap-0.5 cursor-pointer" title="Rate this recipe from 1 to 5 stars">
+                  <button type="button" onclick="setRecipeRating(1)" class="star-btn text-base transition hover:scale-125 focus:outline-none text-slate-600 hover:text-amber-400 cursor-pointer" title="Rate 1 Star">☆</button>
+                  <button type="button" onclick="setRecipeRating(2)" class="star-btn text-base transition hover:scale-125 focus:outline-none text-slate-600 hover:text-amber-400 cursor-pointer" title="Rate 2 Stars">☆</button>
+                  <button type="button" onclick="setRecipeRating(3)" class="star-btn text-base transition hover:scale-125 focus:outline-none text-slate-600 hover:text-amber-400 cursor-pointer" title="Rate 3 Stars">☆</button>
+                  <button type="button" onclick="setRecipeRating(4)" class="star-btn text-base transition hover:scale-125 focus:outline-none text-slate-600 hover:text-amber-400 cursor-pointer" title="Rate 4 Stars">☆</button>
+                  <button type="button" onclick="setRecipeRating(5)" class="star-btn text-base transition hover:scale-125 focus:outline-none text-slate-600 hover:text-amber-400 cursor-pointer" title="Rate 5 Stars">☆</button>
                   <span id="ratingScoreText" class="text-[11px] font-bold text-amber-400 ml-1">0/5</span>
                 </div>
               </div>
@@ -297,26 +306,26 @@
 
       <div class="flex items-center gap-2 sm:gap-3 shrink-0">
         <!-- Screen Wake Lock Indicator -->
-        <div id="wakeLockStatus" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-800 border border-slate-700 text-slate-400 cursor-pointer" onclick="toggleWakeLockManual()" title="Screen Wake Lock">
+        <div id="wakeLockStatus" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-800 border border-slate-700 text-slate-400 cursor-pointer" onclick="toggleWakeLockManual()" title="Keep screen awake while cooking so display does not turn off">
           <span id="wakeLockDot" class="w-2 h-2 rounded-full bg-slate-500"></span>
           <span id="wakeLockLabel" class="hidden sm:inline">Screen Awake</span>
         </div>
 
         <!-- Ingredients Drawer Button -->
-        <button onclick="toggleCookIngredientsDrawer()" id="cookIngredientsBtn" class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold transition">
-          <span>🥕 Ingredients</span>
+        <button onclick="toggleCookIngredientsDrawer()" id="cookIngredientsBtn" class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold transition cursor-pointer" title="View ingredients list without losing your cooking step">
+          <span id="cookDrawerBtnText">🥕 Ingredients</span>
           <span id="cookIngProgressBadge" class="bg-amber-500/20 text-amber-400 px-1.5 py-0.2 rounded text-[11px] font-bold">0/0</span>
         </button>
 
         <!-- Fullscreen API toggle -->
-        <button onclick="toggleFullscreen()" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs border border-slate-700 transition" title="Toggle Fullscreen">
+        <button onclick="toggleFullscreen()" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs border border-slate-700 transition cursor-pointer" title="Toggle full-screen view">
           <span id="fullscreenIcon">⛶</span>
         </button>
 
         <!-- Exit Button -->
-        <button onclick="exitCookMode()" class="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 rounded-lg text-xs font-bold transition flex items-center gap-1">
+        <button onclick="exitCookMode()" class="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer" title="Leave Cook Mode and return to recipe">
           <span>✕</span>
-          <span class="hidden sm:inline">Exit</span>
+          <span id="cookExitLabel" class="hidden sm:inline">Exit</span>
         </button>
       </div>
     </header>
@@ -344,7 +353,7 @@
 
         <!-- Step Check Toggle (Huge kitchen tap target) -->
         <div class="flex justify-center pt-2">
-          <button id="cookStepCheckBtn" onclick="toggleCookCurrentStepCheck()" class="px-6 py-3.5 rounded-xl border text-sm md:text-base font-semibold flex items-center gap-3 transition cursor-pointer shadow-md bg-slate-900 border-slate-700 hover:border-amber-500">
+          <button id="cookStepCheckBtn" onclick="toggleCookCurrentStepCheck()" class="px-6 py-3.5 rounded-xl border text-sm md:text-base font-semibold flex items-center gap-3 transition cursor-pointer shadow-md bg-slate-900 border-slate-700 hover:border-amber-500" title="Check off this step as completed">
             <span id="cookStepCheckIcon" class="w-6 h-6 rounded flex items-center justify-center border border-slate-600 bg-slate-800 text-xs"></span>
             <span id="cookStepCheckText">Mark Step as Completed</span>
           </button>
@@ -357,16 +366,16 @@
 
     <!-- Bottom Kitchen Control Bar (Extra Large Tap Targets) -->
     <footer class="border-t border-slate-800 bg-slate-900/90 px-4 md:px-8 py-4 flex items-center justify-between gap-4">
-      <button id="cookPrevBtn" onclick="prevCookStep()" class="flex-1 max-w-[200px] h-14 md:h-16 bg-slate-800 hover:bg-slate-700 disabled:opacity-20 disabled:pointer-events-none text-slate-100 font-bold rounded-2xl text-base md:text-lg border border-slate-700 flex items-center justify-center gap-2 transition shadow-lg">
+      <button id="cookPrevBtn" onclick="prevCookStep()" class="flex-1 max-w-[200px] h-14 md:h-16 bg-slate-800 hover:bg-slate-700 disabled:opacity-20 disabled:pointer-events-none text-slate-100 font-bold rounded-2xl text-base md:text-lg border border-slate-700 flex items-center justify-center gap-2 transition shadow-lg cursor-pointer" title="Go back to the previous step">
         <span>◀</span>
-        <span>Previous</span>
+        <span id="cookPrevBtnLabel">Previous</span>
       </button>
 
       <div class="text-center hidden md:block text-xs text-slate-400">
         Use <kbd class="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 text-slate-300 font-mono">←</kbd> <kbd class="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 text-slate-300 font-mono">→</kbd> to navigate • <kbd class="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 text-slate-300 font-mono">Space</kbd> to check • <kbd class="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 text-slate-300 font-mono">I</kbd> for ingredients
       </div>
 
-      <button id="cookNextBtn" onclick="nextCookStep()" class="flex-1 max-w-[240px] h-14 md:h-16 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold rounded-2xl text-base md:text-lg flex items-center justify-center gap-2 transition shadow-lg shadow-amber-500/10">
+      <button id="cookNextBtn" onclick="nextCookStep()" class="flex-1 max-w-[240px] h-14 md:h-16 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold rounded-2xl text-base md:text-lg flex items-center justify-center gap-2 transition shadow-lg shadow-amber-500/10 cursor-pointer" title="Move to the next step or finish recipe">
         <span id="cookNextBtnText">Next Step</span>
         <span>▶</span>
       </button>
@@ -376,17 +385,105 @@
     <div id="cookIngredientsDrawer" class="fixed inset-y-0 right-0 w-full sm:w-96 bg-slate-900 border-l border-slate-800 shadow-2xl p-6 z-50 flex flex-col transform translate-x-full transition-transform duration-300">
       <div class="flex items-center justify-between pb-4 border-b border-slate-800">
         <div>
-          <h3 class="font-bold text-amber-400 text-lg">🥕 Ingredients</h3>
+          <h3 id="drawerHeaderTitle" class="font-bold text-amber-400 text-lg">🥕 Ingredients</h3>
           <p class="text-xs text-slate-400">Scaled for <span id="drawerServings" class="text-white font-semibold">4</span> servings (<span id="drawerUnits" class="text-amber-400">metric</span>)</p>
         </div>
-        <button onclick="toggleCookIngredientsDrawer()" class="p-2 text-slate-400 hover:text-white rounded-lg bg-slate-800 text-sm">✕</button>
+        <button onclick="toggleCookIngredientsDrawer()" class="p-2 text-slate-400 hover:text-white rounded-lg bg-slate-800 text-sm cursor-pointer" title="Close ingredients list">✕</button>
       </div>
 
       <div class="flex-1 overflow-y-auto py-4 space-y-2 custom-scrollbar" id="cookDrawerIngredientsList"></div>
 
       <div class="pt-4 border-t border-slate-800 flex justify-between items-center">
-        <button onclick="resetProgress()" class="text-xs text-slate-400 hover:text-amber-400 transition">Reset All Checks</button>
-        <button onclick="toggleCookIngredientsDrawer()" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-sm transition">Done</button>
+        <button onclick="resetProgress()" class="text-xs text-slate-400 hover:text-amber-400 transition cursor-pointer" title="Clear all ingredient checkmarks">Reset All Checks</button>
+        <button onclick="toggleCookIngredientsDrawer()" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-sm transition cursor-pointer" title="Close ingredients list">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dedicated Help & Guide Modal (Written for 7th-Grade Reading Level) -->
+  <div id="helpModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden select-none no-print">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-800/60">
+        <div class="flex items-center gap-2.5">
+          <span class="text-2xl">💡</span>
+          <div>
+            <h2 id="helpModalTitle" class="text-lg font-bold text-amber-400">How to Use Recipe Deck</h2>
+            <p id="helpModalSubtitle" class="text-xs text-slate-400">Easy, step-by-step guide to help you cook and save recipes</p>
+          </div>
+        </div>
+        <button onclick="closeHelpModal()" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition text-lg leading-none cursor-pointer" title="Close help guide">✕</button>
+      </div>
+
+      <!-- Modal Content (Scrollable) -->
+      <div class="px-6 py-5 overflow-y-auto space-y-4 text-sm custom-scrollbar leading-relaxed">
+        <!-- Section 1: Adding a Recipe -->
+        <div class="p-4 rounded-xl bg-slate-800/50 border border-slate-700/80 space-y-1.5">
+          <div class="flex items-center gap-2 font-bold text-amber-300">
+            <span>📝</span>
+            <h3 id="helpSec1Title">1. How to Add a Recipe</h3>
+          </div>
+          <p id="helpSec1Body" class="text-xs text-slate-300">You can add any recipe in two simple ways:</p>
+          <ul class="text-xs text-slate-300 space-y-1.5 pl-4 list-disc">
+            <li id="helpSec1Point1"><strong>Paste Text:</strong> Copy recipe text or a social media post into the box and tap <em>✨ Format & Parse Text</em>.</li>
+            <li id="helpSec1Point2"><strong>Upload a Photo:</strong> Take a picture or screenshot on your phone, drop it into the box, and tap <em>🔍 OCR & Extract Recipe</em>.</li>
+          </ul>
+        </div>
+
+        <!-- Section 2: Serving Sizes & Unit Conversions -->
+        <div class="p-4 rounded-xl bg-slate-800/50 border border-slate-700/80 space-y-1.5">
+          <div class="flex items-center gap-2 font-bold text-emerald-300">
+            <span>⚖️</span>
+            <h3 id="helpSec2Title">2. Change Serving Sizes & Units</h3>
+          </div>
+          <ul class="text-xs text-slate-300 space-y-1.5 pl-4 list-disc">
+            <li id="helpSec2Point1"><strong>Change Servings:</strong> Tap the <strong>-</strong> and <strong>+</strong> buttons. All ingredient amounts calculate automatically for your group.</li>
+            <li id="helpSec2Point2"><strong>Switch Units:</strong> Tap <strong>Metric</strong> for grams and milliliters, or <strong>Imperial</strong> for ounces and cups.</li>
+          </ul>
+        </div>
+
+        <!-- Section 3: Interactive Cook Mode -->
+        <div class="p-4 rounded-xl bg-slate-800/50 border border-slate-700/80 space-y-1.5">
+          <div class="flex items-center gap-2 font-bold text-amber-300">
+            <span>🍳</span>
+            <h3 id="helpSec3Title">3. Interactive Cook Mode & Timers</h3>
+          </div>
+          <ul class="text-xs text-slate-300 space-y-1.5 pl-4 list-disc">
+            <li id="helpSec3Point1"><strong>Step-by-Step View:</strong> Tap <strong>Cook Mode</strong> for big, high-contrast instructions that are easy to read across the kitchen counter.</li>
+            <li id="helpSec3Point2"><strong>Screen Stays On:</strong> The app keeps your phone or computer screen awake while you cook so it won't fall asleep.</li>
+            <li id="helpSec3Point3"><strong>Instant Kitchen Timers:</strong> Whenever a recipe step says "cook for 15 minutes", a timer button appears. Tap it to start a live countdown.</li>
+          </ul>
+        </div>
+
+        <!-- Section 4: Organizing, Ratings & Tag Filters -->
+        <div class="p-4 rounded-xl bg-slate-800/50 border border-slate-700/80 space-y-1.5">
+          <div class="flex items-center gap-2 font-bold text-purple-300">
+            <span>⭐</span>
+            <h3 id="helpSec4Title">4. Save, Rate, and Organize</h3>
+          </div>
+          <ul class="text-xs text-slate-300 space-y-1.5 pl-4 list-disc">
+            <li id="helpSec4Point1"><strong>Save to Library:</strong> Tap <strong>Save to SQLite</strong> (or <strong>Update Recipe</strong>) to store recipes permanently.</li>
+            <li id="helpSec4Point2"><strong>Star Ratings:</strong> Tap 1 to 5 stars to keep track of your favorite meals.</li>
+            <li id="helpSec4Point3"><strong>Difficulty Badge:</strong> Tap the difficulty pill to toggle between 🟢 Easy, 🟡 Medium, and 🔴 Hard.</li>
+            <li id="helpSec4Point4"><strong>Tag Filter Pills:</strong> Click protein or cuisine pills (like Chicken, Pasta, Thai) in the sidebar to filter your collection with one tap.</li>
+          </ul>
+        </div>
+
+        <!-- Section 5: Language Selector -->
+        <div class="p-4 rounded-xl bg-slate-800/50 border border-slate-700/80 space-y-1.5">
+          <div class="flex items-center gap-2 font-bold text-sky-300">
+            <span>🌐</span>
+            <h3 id="helpSec5Title">5. Preferred Language</h3>
+          </div>
+          <p id="helpSec5Body" class="text-xs text-slate-300">Choose your preferred language from the dropdown menu in the top header at any time.</p>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-6 py-3 border-t border-slate-800 flex justify-end bg-slate-800/40">
+        <button id="helpModalCloseBtn" onclick="closeHelpModal()" class="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs transition shadow cursor-pointer">
+          Got it! 👍
+        </button>
       </div>
     </div>
   </div>
@@ -429,12 +526,34 @@
        ========================================================================== */
     const I18N = {
       en: {
-        appSubtitle: "Clean extraction, live unit conversions, photo attachments, tags, and interactive Cook Mode",
+        appSubtitle: "Turn any recipe or photo into clean steps, change serving sizes, and cook step-by-step.",
+        help: "Help",
+        helpModalTitle: "How to Use Recipe Deck",
+        helpModalSubtitle: "Easy, step-by-step guide to help you cook and save recipes",
+        helpGotIt: "Got it! 👍",
+        helpSec1Title: "1. How to Add a Recipe",
+        helpSec1Body: "You can add any recipe in two simple ways:",
+        helpSec1Point1: "<strong>Paste Text:</strong> Copy recipe text or a social media post into the box and tap <em>✨ Format & Parse Text</em>.",
+        helpSec1Point2: "<strong>Upload a Photo:</strong> Take a picture or screenshot on your phone, drop it into the box, and tap <em>🔍 OCR & Extract Recipe</em>.",
+        helpSec2Title: "2. Change Serving Sizes & Units",
+        helpSec2Point1: "<strong>Change Servings:</strong> Tap the <strong>-</strong> and <strong>+</strong> buttons. All ingredient amounts calculate automatically for your group.",
+        helpSec2Point2: "<strong>Switch Units:</strong> Tap <strong>Metric</strong> for grams and milliliters, or <strong>Imperial</strong> for ounces and cups.",
+        helpSec3Title: "3. Interactive Cook Mode & Timers",
+        helpSec3Point1: "<strong>Step-by-Step View:</strong> Tap <strong>Cook Mode</strong> for big, high-contrast instructions that are easy to read across the kitchen counter.",
+        helpSec3Point2: "<strong>Screen Stays On:</strong> The app keeps your phone or computer screen awake while you cook so it won't fall asleep.",
+        helpSec3Point3: "<strong>Instant Kitchen Timers:</strong> Whenever a recipe step says 'cook for 15 minutes', a timer button appears. Tap it to start a live countdown.",
+        helpSec4Title: "4. Save, Rate, and Organize",
+        helpSec4Point1: "<strong>Save to Library:</strong> Tap <strong>Save to SQLite</strong> (or <strong>Update Recipe</strong>) to store recipes permanently.",
+        helpSec4Point2: "<strong>Star Ratings:</strong> Tap 1 to 5 stars to keep track of your favorite meals.",
+        helpSec4Point3: "<strong>Difficulty Badge:</strong> Tap the difficulty pill to toggle between 🟢 Easy, 🟡 Medium, and 🔴 Hard.",
+        helpSec4Point4: "<strong>Tag Filter Pills:</strong> Click protein or cuisine pills (like Chicken, Pasta, Thai) in the sidebar to filter your collection with one tap.",
+        helpSec5Title: "5. Preferred Language",
+        helpSec5Body: "Choose your preferred language from the dropdown menu in the top header at any time.",
         addRecipe: "Add Recipe",
         saved: "Saved",
         tabText: "📝 Text / Caption",
         tabImage: "📸 Screenshot / Photo",
-        rawPlaceholder: "Paste full post, Instagram caption, or ingredients list here...",
+        rawPlaceholder: "Paste recipe text, social media post, or ingredients here...",
         parseText: "✨ Format & Parse Text",
         parsingText: "⏳ Parsing with Gemini...",
         dropScreenshot: "Click or drag screenshot here",
@@ -494,10 +613,72 @@
         deleteSuccess: "🗑️ Recipe deleted successfully.",
         pasteFirst: "Please paste recipe text first!",
         selectImageFirst: "Please select an image first!",
-        allStepsDone: "🎉 Congratulations! You have completed all steps in this recipe."
+        allStepsDone: "🎉 Congratulations! You have completed all steps in this recipe.",
+        tipChooseLang: "Choose your preferred language",
+        tipHelp: "Learn how to use Recipe Deck",
+        tipAddRecipe: "Clear the screen and start adding a new recipe",
+        tipSavedCount: "Total recipes saved in your library",
+        tipTabText: "Type or paste recipe text here",
+        tipTabImage: "Upload a photo or screenshot of a recipe",
+        tipRawInput: "Paste your recipe text or ingredients list here",
+        tipParseText: "Read the text and turn it into a clean recipe",
+        tipDropZone: "Click or drag a recipe photo here",
+        tipParseImage: "Read the photo and turn it into a clean recipe",
+        tipSearch: "Type a word to search recipe names, ingredients, or tags",
+        tipDbBadge: "All recipes are saved in your local database",
+        tipMetric: "Show amounts in grams and milliliters",
+        tipImperial: "Show amounts in ounces and cups",
+        tipFewerServings: "Make fewer servings",
+        tipMoreServings: "Make more servings",
+        tipCookMode: "Open big screen step-by-step cooking mode",
+        tipSave: "Save this recipe to your library",
+        tipPrint: "Print this recipe or save as a PDF",
+        tipAddNext: "Clear screen to add another new recipe",
+        tipDelete: "Delete this recipe",
+        tipClose: "Close recipe view",
+        tipChangePhoto: "Pick a new photo for this recipe",
+        tipRemovePhoto: "Remove this photo from the recipe",
+        tipAddPhoto: "Add a picture of this recipe (automatically resized)",
+        tipResetChecks: "Clear all checkmarks on ingredients and steps",
+        tipDifficulty: "Click to switch difficulty between Easy, Medium, and Hard",
+        tipStarRating: "Rate this recipe from 1 to 5 stars",
+        tipCheckIng: "Click to check off this ingredient as prepared",
+        tipCheckInst: "Click to mark this step finished",
+        tipWakeLock: "Keep screen awake while cooking so display does not turn off",
+        tipCookIngredients: "View ingredients list without losing your cooking step",
+        tipFullscreen: "Toggle full-screen view",
+        tipExitCook: "Leave Cook Mode and return to recipe",
+        tipCookStepCheck: "Check off this step as completed",
+        tipPrevStep: "Go back to the previous step",
+        tipNextStep: "Move to the next step or finish recipe",
+        tipTagFilter: "Show only recipes with this tag",
+        tipOpenRecipe: "Click to open this recipe",
+        tipDeleteRecipe: "Delete this recipe from your collection"
       },
       es: {
-        appSubtitle: "Extracción limpia, conversión de unidades, fotos adjuntas, etiquetas y Modo Cocina",
+        appSubtitle: "Convierte cualquier receta o foto en pasos claros, cambia porciones y cocina paso a paso.",
+        help: "Ayuda",
+        helpModalTitle: "Cómo usar Recipe Deck",
+        helpModalSubtitle: "Guía fácil y paso a paso para cocinar y guardar tus recetas",
+        helpGotIt: "¡Entendido! 👍",
+        helpSec1Title: "1. Cómo añadir una receta",
+        helpSec1Body: "Puedes añadir cualquier receta de dos formas sencillas:",
+        helpSec1Point1: "<strong>Pegar texto:</strong> Copia el texto o publicación en la caja y toca <em>✨ Formatear y Analizar</em>.",
+        helpSec1Point2: "<strong>Subir una foto:</strong> Toma una foto o captura con tu teléfono, arrástrala a la caja y toca <em>🔍 Extraer Receta con OCR</em>.",
+        helpSec2Title: "2. Cambiar porciones y medidas",
+        helpSec2Point1: "<strong>Cambiar porciones:</strong> Toca los botones <strong>-</strong> y <strong>+</strong>. Las cantidades se calculan solas.",
+        helpSec2Point2: "<strong>Cambiar unidades:</strong> Elige <strong>Métrico</strong> (gramos y ml) o <strong>Imperial</strong> (onzas y tazas).",
+        helpSec3Title: "3. Modo Cocina interactivo y temporizadores",
+        helpSec3Point1: "<strong>Paso a paso:</strong> Toca <strong>Modo Cocina</strong> para ver letras grandes y fáciles de leer.",
+        helpSec3Point2: "<strong>Pantalla encendida:</strong> La pantalla de tu teléfono o computadora no se apagará mientras cocinas.",
+        helpSec3Point3: "<strong>Temporizadores listos:</strong> Si un paso dice 'hornear 20 minutos', toca el botón del temporizador para iniciar la cuenta regresiva.",
+        helpSec4Title: "4. Guardar, valorar y organizar",
+        helpSec4Point1: "<strong>Guardar en biblioteca:</strong> Toca <strong>Guardar en SQLite</strong> (o <strong>Actualizar Receta</strong>).",
+        helpSec4Point2: "<strong>Estrellas:</strong> Toca de 1 a 5 estrellas para recordar tus platos favoritos.",
+        helpSec4Point3: "<strong>Dificultad:</strong> Cambia entre 🟢 Fácil, 🟡 Media y 🔴 Difícil con un toque.",
+        helpSec4Point4: "<strong>Etiquetas:</strong> Toca las etiquetas (Pollo, Pasta, etc.) en el panel lateral para filtrar recetas.",
+        helpSec5Title: "5. Idioma preferido",
+        helpSec5Body: "Elige tu idioma favorito en el menú superior en cualquier momento.",
         addRecipe: "Añadir Receta",
         saved: "Guardadas",
         tabText: "📝 Texto / Copiar",
@@ -562,10 +743,72 @@
         deleteSuccess: "🗑️ Receta eliminada con éxito.",
         pasteFirst: "¡Por favor, pega primero el texto de la receta!",
         selectImageFirst: "¡Por favor, selecciona una imagen primero!",
-        allStepsDone: "🎉 ¡Felicidades! Has completado todos los pasos de esta receta."
+        allStepsDone: "🎉 ¡Felicidades! Has completado todos los pasos de esta receta.",
+        tipChooseLang: "Elige tu idioma preferido",
+        tipHelp: "Aprende a usar Recipe Deck",
+        tipAddRecipe: "Limpia la pantalla para crear una nueva receta",
+        tipSavedCount: "Total de recetas guardadas en tu colección",
+        tipTabText: "Escribe o pega texto de la receta aquí",
+        tipTabImage: "Sube una foto o captura de pantalla de la receta",
+        tipRawInput: "Pega el texto o lista de ingredientes aquí",
+        tipParseText: "Lee el texto y conviértelo en una receta limpia",
+        tipDropZone: "Haz clic o arrastra una foto aquí",
+        tipParseImage: "Lee la foto y conviértela en una receta limpia",
+        tipSearch: "Escribe para buscar recetas, ingredientes o etiquetas",
+        tipDbBadge: "Todas las recetas se guardan en tu base de datos local",
+        tipMetric: "Ver cantidades en gramos y mililitros",
+        tipImperial: "Ver cantidades en onzas y tazas",
+        tipFewerServings: "Preparar menos porciones",
+        tipMoreServings: "Preparar más porciones",
+        tipCookMode: "Abrir pantalla completa para cocinar paso a paso",
+        tipSave: "Guardar esta receta en tu colección",
+        tipPrint: "Imprimir receta o guardar como PDF",
+        tipAddNext: "Limpiar pantalla y añadir otra receta",
+        tipDelete: "Eliminar esta receta",
+        tipClose: "Cerrar vista de receta",
+        tipChangePhoto: "Elegir una nueva foto para esta receta",
+        tipRemovePhoto: "Quitar esta foto de la receta",
+        tipAddPhoto: "Añadir foto de la receta (redimensionada automáticamente)",
+        tipResetChecks: "Reiniciar marcas en ingredientes y pasos",
+        tipDifficulty: "Cambiar dificultad entre Fácil, Media y Difícil",
+        tipStarRating: "Calificar esta receta de 1 a 5 estrellas",
+        tipCheckIng: "Marcar ingrediente como preparado",
+        tipCheckInst: "Marcar paso como terminado",
+        tipWakeLock: "Mantener pantalla encendida mientras cocinas",
+        tipCookIngredients: "Ver lista de ingredientes sin salir del paso",
+        tipFullscreen: "Alternar pantalla completa",
+        tipExitCook: "Salir del Modo Cocina y volver a la receta",
+        tipCookStepCheck: "Marcar este paso como completado",
+        tipPrevStep: "Volver al paso anterior",
+        tipNextStep: "Avanzar al siguiente paso",
+        tipTagFilter: "Mostrar solo recetas con esta etiqueta",
+        tipOpenRecipe: "Haz clic para abrir esta receta",
+        tipDeleteRecipe: "Eliminar esta receta de tu colección"
       },
       fr: {
-        appSubtitle: "Extraction claire, conversion d'unités, photos, étiquettes et Mode Cuisine interactif",
+        appSubtitle: "Transformez vos recettes et photos en étapes claires, ajustez les portions et cuisinez sereinement.",
+        help: "Aide",
+        helpModalTitle: "Comment utiliser Recipe Deck",
+        helpModalSubtitle: "Guide simple étape par étape pour cuisiner et enregistrer vos recettes",
+        helpGotIt: "Compris ! 👍",
+        helpSec1Title: "1. Comment ajouter une recette",
+        helpSec1Body: "Vous pouvez ajouter une recette de deux manières très simples :",
+        helpSec1Point1: "<strong>Coller du texte :</strong> Copiez le texte de votre recette et cliquez sur <em>✨ Formater et Extraire</em>.",
+        helpSec1Point2: "<strong>Téléverser une photo :</strong> Prenez une photo ou capture d'écran et cliquez sur <em>🔍 Extraire via OCR</em>.",
+        helpSec2Title: "2. Modifier les portions et unités",
+        helpSec2Point1: "<strong>Portions :</strong> Cliquez sur <strong>-</strong> et <strong>+</strong> pour recalculer tous les ingrédients.",
+        helpSec2Point2: "<strong>Unités :</strong> Basculez entre <strong>Métrique</strong> (g / ml) et <strong>Impérial</strong> (oz / tasses).",
+        helpSec3Title: "3. Mode Cuisine interactif et minuteurs",
+        helpSec3Point1: "<strong>Vue pas à pas :</strong> Cliquez sur <strong>Mode Cuisine</strong> pour de grands textes faciles à lire en cuisine.",
+        helpSec3Point2: "<strong>Écran toujours allumé :</strong> Votre écran reste éveillé pendant que vous cuisinez.",
+        helpSec3Point3: "<strong>Minuteurs automatiques :</strong> Cliquez sur les minuteurs détectés pour lancer un compte à rebours.",
+        helpSec4Title: "4. Enregistrer, noter et organiser",
+        helpSec4Point1: "<strong>Enregistrer :</strong> Cliquez sur <strong>Enregistrer</strong> pour sauvegarder durablement.",
+        helpSec4Point2: "<strong>Étoiles :</strong> Notez de 1 à 5 étoiles pour retrouver vos recettes préférées.",
+        helpSec4Point3: "<strong>Difficulté :</strong> Basculez entre 🟢 Facile, 🟡 Moyen et 🔴 Difficile.",
+        helpSec4Point4: "<strong>Étiquettes :</strong> Filtrez votre carnet en un clic grâce aux étiquettes (Poulet, Pâtes...).",
+        helpSec5Title: "5. Langue préférée",
+        helpSec5Body: "Sélectionnez votre langue dans le menu en haut à droite à tout moment.",
         addRecipe: "Ajouter une recette",
         saved: "Enregistrées",
         tabText: "📝 Texte / Légende",
@@ -630,10 +873,72 @@
         deleteSuccess: "🗑️ Recette supprimée.",
         pasteFirst: "Veuillez d'abord coller le texte de la recette !",
         selectImageFirst: "Veuillez d'abord sélectionner une image !",
-        allStepsDone: "🎉 Félicitations ! Vous avez terminé toutes les étapes."
+        allStepsDone: "🎉 Félicitations ! Vous avez terminé toutes les étapes.",
+        tipChooseLang: "Choisissez votre langue préférée",
+        tipHelp: "Apprendre à utiliser Recipe Deck",
+        tipAddRecipe: "Effacer l'écran pour ajouter une nouvelle recette",
+        tipSavedCount: "Total des recettes enregistrées dans votre carnet",
+        tipTabText: "Tapez ou collez le texte de la recette ici",
+        tipTabImage: "Téléversez une photo ou capture d'écran",
+        tipRawInput: "Collez votre texte ou liste d'ingrédients ici",
+        tipParseText: "Analyser le texte et générer la recette",
+        tipDropZone: "Glissez ou cliquez pour ajouter une photo",
+        tipParseImage: "Analyser l'image avec OCR pour extraire la recette",
+        tipSearch: "Rechercher par nom, ingrédient ou étiquette",
+        tipDbBadge: "Toutes vos recettes sont stockées en base SQLite",
+        tipMetric: "Afficher en grammes et millilitres",
+        tipImperial: "Afficher en onces et tasses",
+        tipFewerServings: "Diminuer les portions",
+        tipMoreServings: "Augmenter les portions",
+        tipCookMode: "Ouvrir le Mode Cuisine grand écran pas à pas",
+        tipSave: "Enregistrer cette recette dans votre carnet",
+        tipPrint: "Imprimer ou exporter en PDF",
+        tipAddNext: "Créer une nouvelle recette vierge",
+        tipDelete: "Supprimer cette recette",
+        tipClose: "Fermer la recette active",
+        tipChangePhoto: "Choisir une nouvelle photo",
+        tipRemovePhoto: "Supprimer la photo de la recette",
+        tipAddPhoto: "Ajouter une photo de la recette",
+        tipResetChecks: "Décocher tous les ingrédients et étapes",
+        tipDifficulty: "Changer le niveau de difficulté",
+        tipStarRating: "Attribuer une note de 1 à 5 étoiles",
+        tipCheckIng: "Cocher l'ingrédient comme préparé",
+        tipCheckInst: "Cocher l'étape comme terminée",
+        tipWakeLock: "Garder l'écran allumé pendant la préparation",
+        tipCookIngredients: "Consulter les ingrédients sans quitter l'étape",
+        tipFullscreen: "Basculer en plein écran",
+        tipExitCook: "Quitter le Mode Cuisine",
+        tipCookStepCheck: "Marquer cette étape comme terminée",
+        tipPrevStep: "Revenir à l'étape précédente",
+        tipNextStep: "Passer à l'étape suivante",
+        tipTagFilter: "Filtrer les recettes par cette étiquette",
+        tipOpenRecipe: "Cliquer pour afficher cette recette",
+        tipDeleteRecipe: "Supprimer cette recette du carnet"
       },
       de: {
-        appSubtitle: "Klare Rezepte, Einheitenumrechnung, Fotos, Tags und interaktiver Kochmodus",
+        appSubtitle: "Verwandle Rezepte und Fotos in einfache Schritte, passe Portionen an und koche entspannt.",
+        help: "Hilfe",
+        helpModalTitle: "So benutzt du Recipe Deck",
+        helpModalSubtitle: "Einfache Schritt-für-Schritt-Anleitung zum Kochen und Speichern",
+        helpGotIt: "Verstanden! 👍",
+        helpSec1Title: "1. Rezept hinzufügen",
+        helpSec1Body: "Du kannst Rezepte ganz einfach auf zwei Arten erfassen:",
+        helpSec1Point1: "<strong>Text einfügen:</strong> Kopiere den Rezepttext und klicke auf <em>✨ Formatieren & Analysieren</em>.",
+        helpSec1Point2: "<strong>Foto hochladen:</strong> Mache ein Foto oder einen Screenshot und klicke auf <em>🔍 Rezept via OCR erfassen</em>.",
+        helpSec2Title: "2. Portionen & Maßeinheiten anpassen",
+        helpSec2Point1: "<strong>Portionen:</strong> Klicke auf <strong>-</strong> und <strong>+</strong> zum automatischen Umrechnen.",
+        helpSec2Point2: "<strong>Einheiten:</strong> Wechsle zwischen <strong>Metrisch</strong> (g / ml) und <strong>Imperial</strong> (oz / cups).",
+        helpSec3Title: "3. Interaktiver Kochmodus & Timer",
+        helpSec3Point1: "<strong>Schritt für Schritt:</strong> Klicke auf <strong>Kochmodus</strong> für gut lesbare große Schrift.",
+        helpSec3Point2: "<strong>Bildschirm bleibt an:</strong> Dein Display schaltet sich beim Kochen nicht ab.",
+        helpSec3Point3: "<strong>Küchentimer:</strong> Klicke auf erkannte Zeitangaben, um sofort einen Timer zu starten.",
+        helpSec4Title: "4. Speichern, bewerten und organisieren",
+        helpSec4Point1: "<strong>Speichern:</strong> Sichere deine Rezepte mit <strong>In SQLite speichern</strong>.",
+        helpSec4Point2: "<strong>Sterne:</strong> Vergib 1 bis 5 Sterne für deine Lieblingsgerichte.",
+        helpSec4Point3: "<strong>Schwierigkeit:</strong> Wähle zwischen 🟢 Einfach, 🟡 Mittel und 🔴 Schwer.",
+        helpSec4Point4: "<strong>Tags:</strong> Filtere deine Sammlung schnell über die Tag-Schaltflächen.",
+        helpSec5Title: "5. Bevorzugte Sprache",
+        helpSec5Body: "Wähle deine Sprache jederzeit oben im Menü aus.",
         addRecipe: "Rezept hinzufügen",
         saved: "Gespeichert",
         tabText: "📝 Text / Beschreibung",
@@ -698,10 +1003,72 @@
         deleteSuccess: "🗑️ Rezept erfolgreich gelöscht.",
         pasteFirst: "Bitte füge zuerst einen Rezepttext ein!",
         selectImageFirst: "Bitte wähle zuerst ein Bild aus!",
-        allStepsDone: "🎉 Herzlichen Glückwunsch! Du hast alle Schritte abgeschlossen."
+        allStepsDone: "🎉 Herzlichen Glückwunsch! Du hast alle Schritte abgeschlossen.",
+        tipChooseLang: "Wähle deine bevorzugte Sprache",
+        tipHelp: "Erfahre, wie Recipe Deck funktioniert",
+        tipAddRecipe: "Ansicht leeren und neues Rezept starten",
+        tipSavedCount: "Gesamtzahl der gespeicherten Rezepte",
+        tipTabText: "Rezepttext hier eingeben oder einfügen",
+        tipTabImage: "Rezeptfoto oder Screenshot hochladen",
+        tipRawInput: "Rezepttext oder Zutatenliste hier einfügen",
+        tipParseText: "Text analysieren und formatiertes Rezept erstellen",
+        tipDropZone: "Foto hier ablegen oder anklicken",
+        tipParseImage: "Foto mit OCR auslesen und Rezept extrahieren",
+        tipSearch: "Nach Namen, Zutaten oder Tags suchen",
+        tipDbBadge: "Rezepte werden in der lokalen SQLite-Datenbank gespeichert",
+        tipMetric: "Mengen in Gramm und Millilitern anzeigen",
+        tipImperial: "Mengen in Unzen und Cups anzeigen",
+        tipFewerServings: "Weniger Portionen berechnen",
+        tipMoreServings: "Mehr Portionen berechnen",
+        tipCookMode: "Vollbild-Kochmodus Schritt für Schritt starten",
+        tipSave: "Rezept in deiner Sammlung speichern",
+        tipPrint: "Rezept drucken oder als PDF sichern",
+        tipAddNext: "Ansicht leeren und weiteres Rezept anlegen",
+        tipDelete: "Dieses Rezept löschen",
+        tipClose: "Rezeptansicht schließen",
+        tipChangePhoto: "Neues Foto für dieses Rezept wählen",
+        tipRemovePhoto: "Foto von diesem Rezept entfernen",
+        tipAddPhoto: "Rezeptfoto hinzufügen (automatisch skaliert)",
+        tipResetChecks: "Alle Häkchen bei Zutaten und Schritten aufheben",
+        tipDifficulty: "Schwierigkeit umschalten",
+        tipStarRating: "Rezept mit 1 bis 5 Sternen bewerten",
+        tipCheckIng: "Zutat als vorbereitet markieren",
+        tipCheckInst: "Schritt als erledigt abhaken",
+        tipWakeLock: "Bildschirm während des Kochens eingeschaltet lassen",
+        tipCookIngredients: "Zutatenliste einblenden ohne den Schritt zu verlassen",
+        tipFullscreen: "Vollbildmodus umschalten",
+        tipExitCook: "Kochmodus beenden und zum Rezept zurückkehren",
+        tipCookStepCheck: "Diesen Schritt als erledigt markieren",
+        tipPrevStep: "Zum vorherigen Schritt gehen",
+        tipNextStep: "Zum nächsten Schritt gehen",
+        tipTagFilter: "Nur Rezepte mit diesem Tag anzeigen",
+        tipOpenRecipe: "Klicken, um dieses Rezept anzuzeigen",
+        tipDeleteRecipe: "Dieses Rezept aus der Sammlung löschen"
       },
       it: {
-        appSubtitle: "Estrazione chiara, conversione unità, foto, tag e Modalità Cucina interattiva",
+        appSubtitle: "Trasforma qualsiasi ricetta o foto in passaggi chiari, adatta le dosi e cucina passo dopo passo.",
+        help: "Guida",
+        helpModalTitle: "Come usare Recipe Deck",
+        helpModalSubtitle: "Guida semplice e chiara per cucinare e salvare le tue ricette",
+        helpGotIt: "Ho capito! 👍",
+        helpSec1Title: "1. Come aggiungere una ricetta",
+        helpSec1Body: "Puoi inserire ricette in due modi semplicissimi:",
+        helpSec1Point1: "<strong>Incolla testo:</strong> Copia il testo o un post e tocca <em>✨ Formatta e Analizza</em>.",
+        helpSec1Point2: "<strong>Carica foto:</strong> Scatta una foto o screenshot e tocca <em>🔍 Estrai tramite OCR</em>.",
+        helpSec2Title: "2. Porzioni e unità di misura",
+        helpSec2Point1: "<strong>Porzioni:</strong> Tocca <strong>-</strong> e <strong>+</strong> per ricalcolare tutte le dosi.",
+        helpSec2Point2: "<strong>Unità:</strong> Scegli tra <strong>Metrico</strong> (g / ml) e <strong>Imperiale</strong> (oz / tazze).",
+        helpSec3Title: "3. Modalità Cucina e timer",
+        helpSec3Point1: "<strong>Passo dopo passo:</strong> Tocca <strong>Modalità Cucina</strong> per scritte grandi e chiare.",
+        helpSec3Point2: "<strong>Schermo sempre attivo:</strong> Lo schermo non si spegne mentre cucini.",
+        helpSec3Point3: "<strong>Timer da cucina:</strong> Tocca i timer riconosciuti per far partire il conto alla rovescia.",
+        helpSec4Title: "4. Salvare, valutare e organizzare",
+        helpSec4Point1: "<strong>Salva:</strong> Tocca <strong>Salva in SQLite</strong> per memorizzare la ricetta.",
+        helpSec4Point2: "<strong>Stelle:</strong> Dai da 1 a 5 stelle ai tuoi piatti preferiti.",
+        helpSec4Point3: "<strong>Difficoltà:</strong> Alterna tra 🟢 Facile, 🟡 Media e 🔴 Difficile.",
+        helpSec4Point4: "<strong>Tag:</strong> Filtra velocemente la raccolta toccando le etichette.",
+        helpSec5Title: "5. Lingua preferita",
+        helpSec5Body: "Cambia lingua in alto a destra ogni volta che vuoi.",
         addRecipe: "Aggiungi Ricetta",
         saved: "Salvate",
         tabText: "📝 Testo / Didascalia",
@@ -766,10 +1133,72 @@
         deleteSuccess: "🗑️ Ricetta eliminata con successo.",
         pasteFirst: "Incolla prima il testo della ricetta!",
         selectImageFirst: "Seleziona prima un'immagine!",
-        allStepsDone: "🎉 Congratulazioni! Hai completato tutti i passaggi."
+        allStepsDone: "🎉 Congratulazioni! Hai completato tutti i passaggi.",
+        tipChooseLang: "Scegli la tua lingua preferita",
+        tipHelp: "Scopri come usare Recipe Deck",
+        tipAddRecipe: "Svuota la schermata per aggiungere una nuova ricetta",
+        tipSavedCount: "Totale ricette salvate nella tua raccolta",
+        tipTabText: "Scrivi o incolla qui il testo della ricetta",
+        tipTabImage: "Carica una foto o screenshot della ricetta",
+        tipRawInput: "Incolla il testo o gli ingredienti qui",
+        tipParseText: "Analizza il testo e crea la scheda ricetta",
+        tipDropZone: "Clicca o trascina una foto qui",
+        tipParseImage: "Analizza l'immagine con OCR per estrarre la ricetta",
+        tipSearch: "Cerca ricette per nome, ingrediente o tag",
+        tipDbBadge: "Tutte le ricette sono salvate nel database SQLite",
+        tipMetric: "Mostra quantità in grammi e millilitri",
+        tipImperial: "Mostra quantità in once e tazze",
+        tipFewerServings: "Riduci le porzioni",
+        tipMoreServings: "Aumenta le porzioni",
+        tipCookMode: "Apri la modalità cucina a schermo intero",
+        tipSave: "Salva questa ricetta nella tua raccolta",
+        tipPrint: "Stampa la ricetta o salva come PDF",
+        tipAddNext: "Pulisci la vista per inserire un'altra ricetta",
+        tipDelete: "Elimina questa ricetta",
+        tipClose: "Chiudi la vista ricetta",
+        tipChangePhoto: "Scegli una nuova foto per questa ricetta",
+        tipRemovePhoto: "Rimuovi la foto dalla ricetta",
+        tipAddPhoto: "Aggiungi foto della ricetta",
+        tipResetChecks: "Deseleziona tutte le spunte",
+        tipDifficulty: "Cambia livello di difficoltà",
+        tipStarRating: "Valuta la ricetta da 1 a 5 stelle",
+        tipCheckIng: "Spunta l'ingrediente come preparato",
+        tipCheckInst: "Segna il passaggio come completato",
+        tipWakeLock: "Mantieni lo schermo acceso durante la cottura",
+        tipCookIngredients: "Vedi gli ingredienti senza uscire dal passaggio",
+        tipFullscreen: "Attiva/disattiva schermo intero",
+        tipExitCook: "Esci dalla Modalità Cucina",
+        tipCookStepCheck: "Segna questo passaggio come completato",
+        tipPrevStep: "Torna al passaggio precedente",
+        tipNextStep: "Vai al passaggio successivo",
+        tipTagFilter: "Mostra solo ricette con questo tag",
+        tipOpenRecipe: "Clicca per aprire questa ricetta",
+        tipDeleteRecipe: "Elimina questa ricetta dalla raccolta"
       },
       th: {
-        appSubtitle: "จัดการสูตรอาหาร แปลงหน่วยอัตโนมัติ แนบรูปภาพ ติดแท็ก และโหมดทำอาหาร",
+        appSubtitle: "เปลี่ยนข้อความหรือรูปภาพสูตรอาหารเป็นขั้นตอนที่เข้าใจง่าย ปรับขนาดที่เสิร์ฟ และทำอาหารตามทีละขั้น",
+        help: "ช่วยเหลือ",
+        helpModalTitle: "วิธีใช้งาน Recipe Deck",
+        helpModalSubtitle: "คู่มือง่ายๆ สำหรับการทำอาหารและบันทึกสูตรอาหาร",
+        helpGotIt: "เข้าใจแล้ว! 👍",
+        helpSec1Title: "1. วิธีเพิ่มสูตรอาหาร",
+        helpSec1Body: "คุณสามารถเพิ่มสูตรอาหารได้ 2 วิธีง่ายๆ:",
+        helpSec1Point1: "<strong>วางข้อความ:</strong> คัดลอกข้อความสูตรแล้วแตะ <em>✨ จัดรูปแบบและแยกข้อมูล</em>",
+        helpSec1Point2: "<strong>อัปโหลดรูปภาพ:</strong> ถ่ายรูปสูตรอาหารแล้วแตะ <em>🔍 สแกน OCR และสกัดสูตรอาหาร</em>",
+        helpSec2Title: "2. ปรับจำนวนที่เสิร์ฟและหน่วยวัด",
+        helpSec2Point1: "<strong>ปรับจำนวนที่เสิร์ฟ:</strong> แตะปุ่ม <strong>-</strong> และ <strong>+</strong> ปริมาณวัตถุดิบจะคำนวณให้อัตโนมัติ",
+        helpSec2Point2: "<strong>เปลี่ยนหน่วย:</strong> เลือกระหว่าง <strong>เมตริก</strong> (กรัม/มล.) หรือ <strong>อิมพีเรียล</strong> (ออนซ์/ถ้วย)",
+        helpSec3Title: "3. โหมดทำอาหารและตัวจับเวลา",
+        helpSec3Point1: "<strong>ดูทีละขั้นตอน:</strong> แตะ <strong>โหมดทำอาหาร</strong> เพื่อเปิดตัวหนังสือขนาดใหญ่ อ่านง่ายจากระยะไกล",
+        helpSec3Point2: "<strong>หน้าจอไม่ดับ:</strong> หน้าจออุปกรณ์ของคุณจะเปิดตลอดเวลาขณะทำอาหาร",
+        helpSec3Point3: "<strong>ตัวจับเวลาในตัว:</strong> แตะปุ่มจับเวลาที่ตรวจพบเพื่อเริ่มนับถอยหลังได้ทันที",
+        helpSec4Title: "4. บันทึก ให้คะแนน และจัดหมวดหมู่",
+        helpSec4Point1: "<strong>บันทึก:</strong> แตะ <strong>บันทึกลง SQLite</strong> เพื่อเก็บสูตรอาหารไว้",
+        helpSec4Point2: "<strong>ให้ดาว:</strong> แตะ 1 ถึง 5 ดาวสำหรับเมนูโปรดของคุณ",
+        helpSec4Point3: "<strong>ความยาก:</strong> สลับระหว่าง 🟢 ง่าย, 🟡 ปานกลาง, 🔴 ยาก",
+        helpSec4Point4: "<strong>แท็ก:</strong> แตะป้ายแท็กด้านข้างเพื่อกรองสูตรอาหารทันที",
+        helpSec5Title: "5. ภาษาที่ต้องการ",
+        helpSec5Body: "เลือกภาษาที่คุณถนัดได้จากเมนูด้านบนขวาตลอดเวลา",
         addRecipe: "เพิ่มสูตรอาหาร",
         saved: "บันทึกแล้ว",
         tabText: "📝 ข้อความ / แคปชั่น",
@@ -834,10 +1263,72 @@
         deleteSuccess: "🗑️ ลบสูตรอาหารเรียบร้อยแล้ว",
         pasteFirst: "กรุณาวางข้อความสูตรอาหารก่อน!",
         selectImageFirst: "กรุณาเลือกรูปภาพก่อน!",
-        allStepsDone: "🎉 ยินดีด้วย! คุณทำตามขั้นตอนทั้งหมดเสร็จเรียบร้อยแล้ว"
+        allStepsDone: "🎉 ยินดีด้วย! คุณทำตามขั้นตอนทั้งหมดเสร็จเรียบร้อยแล้ว",
+        tipChooseLang: "เลือกภาษาที่คุณต้องการ",
+        tipHelp: "เรียนรู้วิธีใช้งาน Recipe Deck",
+        tipAddRecipe: "ล้างหน้าจอเพื่อเริ่มเพิ่มสูตรอาหารใหม่",
+        tipSavedCount: "จำนวนสูตรอาหารทั้งหมดที่บันทึกไว้",
+        tipTabText: "พิมพ์หรือวางข้อความสูตรอาหารที่นี่",
+        tipTabImage: "อัปโหลดรูปภาพหรือภาพหน้าจอสูตรอาหาร",
+        tipRawInput: "วางข้อความหรือรายการวัตถุดิบที่นี่",
+        tipParseText: "อ่านข้อความและสกัดเป็นสูตรอาหาร",
+        tipDropZone: "คลิกหรือลากรูปถ่ายมาวางที่นี่",
+        tipParseImage: "สแกนรูปภาพเพื่อสกัดเป็นสูตรอาหาร",
+        tipSearch: "ค้นหาตามชื่อสูตร วัตถุดิบ หรือแท็ก",
+        tipDbBadge: "สูตรทั้งหมดถูกจัดเก็บในฐานข้อมูล SQLite",
+        tipMetric: "แสดงหน่วยเป็นกรัมและมิลลิลิตร",
+        tipImperial: "แสดงหน่วยเป็นออนซ์และถ้วย",
+        tipFewerServings: "ลดจำนวนที่เสิร์ฟ",
+        tipMoreServings: "เพิ่มจำนวนที่เสิร์ฟ",
+        tipCookMode: "เปิดโหมดทำอาหารเต็มหน้าจอทีละขั้นตอน",
+        tipSave: "บันทึกสูตรอาหารนี้ลงคลังของคุณ",
+        tipPrint: "พิมพ์สูตรอาหารหรือบันทึกเป็น PDF",
+        tipAddNext: "ล้างหน้าจอเพื่อเพิ่มสูตรอาหารอื่น",
+        tipDelete: "ลบสูตรอาหารนี้",
+        tipClose: "ปิดหน้ารายละเอียดสูตรอาหาร",
+        tipChangePhoto: "เลือกรูปภาพใหม่สำหรับสูตรนี้",
+        tipRemovePhoto: "ลบรูปภาพออกจากสูตรนี้",
+        tipAddPhoto: "เพิ่มรูปถ่ายสูตรอาหาร",
+        tipResetChecks: "ล้างการติ๊กถูกทั้งหมด",
+        tipDifficulty: "สลับระดับความยาก ง่าย/ปานกลาง/ยาก",
+        tipStarRating: "ให้คะแนนสูตรนี้ 1 ถึง 5 ดาว",
+        tipCheckIng: "แตะเพื่อระบุว่าเตรียมวัตถุดิบนี้แล้ว",
+        tipCheckInst: "แตะเพื่อระบุว่าทำขั้นตอนนี้เสร็จแล้ว",
+        tipWakeLock: "เปิดหน้าจอตลอดเวลาขณะทำอาหาร",
+        tipCookIngredients: "ดูรายการวัตถุดิบโดยไม่ต้องออกจากขั้นตอน",
+        tipFullscreen: "สลับโหมดเต็มหน้าจอ",
+        tipExitCook: "ออกจากโหมดทำอาหาร",
+        tipCookStepCheck: "ทำขั้นตอนนี้เสร็จเรียบร้อยแล้ว",
+        tipPrevStep: "ย้อนกลับไปยังขั้นตอนก่อนหน้า",
+        tipNextStep: "ไปยังขั้นตอนถัดไป",
+        tipTagFilter: "แสดงเฉพาะสูตรที่มีแท็กนี้",
+        tipOpenRecipe: "คลิกเพื่อเปิดดูสูตรอาหารนี้",
+        tipDeleteRecipe: "ลบสูตรอาหารนี้ออกจากคลัง"
       },
       ja: {
-        appSubtitle: "レシピ抽出、単位変換、写真添付、タグ分類、対話型クックモード",
+        appSubtitle: "テキストや写真からレシピをわかりやすく抽出し、人数分量を自動計算して手順通りに調理できます。",
+        help: "ヘルプ",
+        helpModalTitle: "Recipe Deck の使い方",
+        helpModalSubtitle: "料理とレシピ保存のための簡単ステップガイド",
+        helpGotIt: "了解しました！ 👍",
+        helpSec1Title: "1. レシピの追加方法",
+        helpSec1Body: "2つの簡単な方法でレシピを登録できます:",
+        helpSec1Point1: "<strong>テキスト貼り付け:</strong> レシピの文章を貼り付けて <em>✨ フォーマットと解析</em> をタップします。",
+        helpSec1Point2: "<strong>写真アップロード:</strong> スマホの写真やスクショを選んで <em>🔍 OCRでレシピを抽出</em> をタップします。",
+        helpSec2Title: "2. 人数・分量と単位の変更",
+        helpSec2Point1: "<strong>人数・分量の変更:</strong> <strong>-</strong> と <strong>+</strong> ボタンで材料の分量が自動計算されます。",
+        helpSec2Point2: "<strong>単位の切り替え:</strong> <strong>メートル法</strong> (g / ml) と <strong>ヤード・ポンド法</strong> (oz / cups) をワンタップで切り替え。",
+        helpSec3Title: "3. クックモードとタイマー",
+        helpSec3Point1: "<strong>手順ごとの大画面表示:</strong> <strong>クックモード</strong> でキッチンでも見やすい大きな文字で表示されます。",
+        helpSec3Point2: "<strong>画面スリープ防止:</strong> 調理中に画面が自動で暗くなったり消えたりしません。",
+        helpSec3Point3: "<strong>ワンタップタイマー:</strong> 「20分煮込む」などの手順で表示されるタイマーボタンですぐに計測できます。",
+        helpSec4Title: "4. 保存・評価・タグ管理",
+        helpSec4Point1: "<strong>保存:</strong> <strong>SQLiteに保存</strong>（または <strong>レシピを更新</strong>）で安全に保存。",
+        helpSec4Point2: "<strong>スター評価:</strong> お気に入りレシピに 1〜5 つ星を付けられます。",
+        helpSec4Point3: "<strong>難易度:</strong> 🟢 簡単、🟡 普通、🔴 本格的 をタップで切り替え。",
+        helpSec4Point4: "<strong>タグ絞り込み:</strong> サイドバーのタグ（鶏肉、パスタなど）をタップしてすぐに検索できます。",
+        helpSec5Title: "5. 言語の変更",
+        helpSec5Body: "ヘッダー右上の言語メニューからいつでもお好みの言語に切り替えられます。",
         addRecipe: "レシピを追加",
         saved: "保存済み",
         tabText: "📝 テキスト / キャプション",
@@ -902,10 +1393,72 @@
         deleteSuccess: "🗑️ レシピを削除しました。",
         pasteFirst: "最初にレシピのテキストを貼り付けてください！",
         selectImageFirst: "最初に画像を選択してください！",
-        allStepsDone: "🎉 おめでとうございます！すべての手順が完了しました。"
+        allStepsDone: "🎉 おめでとうございます！すべての手順が完了しました。",
+        tipChooseLang: "お好みの言語を選択",
+        tipHelp: "Recipe Deck の使い方を見る",
+        tipAddRecipe: "画面をクリアして新しいレシピを追加",
+        tipSavedCount: "保存済みレシピの合計数",
+        tipTabText: "ここにレシピのテキストを入力または貼り付け",
+        tipTabImage: "レシピの写真またはスクリーンショットをアップロード",
+        tipRawInput: "レシピの文章や材料リストをここに貼り付け",
+        tipParseText: "テキストを解析してきれいなレシピを作成",
+        tipDropZone: "ここに写真をクリックまたはドラッグ",
+        tipParseImage: "写真からOCRでレシピを自動抽出",
+        tipSearch: "レシピ名、材料、タグで検索",
+        tipDbBadge: "すべてのレシピはローカルデータベースに保存されます",
+        tipMetric: "グラム (g) とミリリットル (ml) で表示",
+        tipImperial: "オンス (oz) とカップで表示",
+        tipFewerServings: "人数・分量を減らす",
+        tipMoreServings: "人数・分量を増やす",
+        tipCookMode: "大画面クックモードで調理を開始",
+        tipSave: "レシピをコレクションに保存",
+        tipPrint: "印刷またはPDFとして保存",
+        tipAddNext: "画面をクリアして次のレシピを追加",
+        tipDelete: "このレシピを削除",
+        tipClose: "レシピ表示を閉じる",
+        tipChangePhoto: "新しい写真を選択",
+        tipRemovePhoto: "レシピから写真を削除",
+        tipAddPhoto: "レシピ写真を追加（自動リサイズ）",
+        tipResetChecks: "すべてのチェックを解除",
+        tipDifficulty: "難易度（簡単・普通・本格的）を切り替え",
+        tipStarRating: "1〜5つ星でレシピを評価",
+        tipCheckIng: "材料の準備完了をチェック",
+        tipCheckInst: "手順の完了をチェック",
+        tipWakeLock: "調理中の画面スリープを防止",
+        tipCookIngredients: "調理画面のまま材料リストを確認",
+        tipFullscreen: "全画面表示の切り替え",
+        tipExitCook: "クックモードを終了して戻る",
+        tipCookStepCheck: "この手順を完了としてマーク",
+        tipPrevStep: "前の手順に戻る",
+        tipNextStep: "次の手順に進む",
+        tipTagFilter: "このタグのレシピのみ表示",
+        tipOpenRecipe: "クリックしてこのレシピを表示",
+        tipDeleteRecipe: "このレシピをコレクションから削除"
       },
       vi: {
-        appSubtitle: "Trích xuất công thức, đổi đơn vị đo, đính kèm ảnh, gắn thẻ và Chế độ Nấu ăn",
+        appSubtitle: "Biến mọi công thức và hình ảnh thành các bước dễ hiểu, thay đổi khẩu phần và nấu ăn từng bước một.",
+        help: "Trợ giúp",
+        helpModalTitle: "Cách sử dụng Recipe Deck",
+        helpModalSubtitle: "Hướng dẫn từng bước đơn giản giúp bạn nấu ăn và lưu công thức",
+        helpGotIt: "Đã hiểu! 👍",
+        helpSec1Title: "1. Cách thêm công thức",
+        helpSec1Body: "Bạn có thể thêm công thức theo 2 cách đơn giản:",
+        helpSec1Point1: "<strong>Dán văn bản:</strong> Sao chép văn bản công thức và nhấn <em>✨ Định dạng & Trích xuất</em>.",
+        helpSec1Point2: "<strong>Tải ảnh lên:</strong> Chọn ảnh chụp màn hình hoặc ảnh món ăn và nhấn <em>🔍 Quét OCR & Trích xuất</em>.",
+        helpSec2Title: "2. Đổi khẩu phần & Đơn vị đo",
+        helpSec2Point1: "<strong>Đổi khẩu phần:</strong> Nhấn <strong>-</strong> và <strong>+</strong> để lượng nguyên liệu tự động thay đổi.",
+        helpSec2Point2: "<strong>Đổi đơn vị:</strong> Chọn <strong>Hệ Mét</strong> (g / ml) hoặc <strong>Hệ Anh</strong> (oz / cốc).",
+        helpSec3Title: "3. Chế độ Nấu ăn & Bộ hẹn giờ",
+        helpSec3Point1: "<strong>Từng bước một:</strong> Nhấn <strong>Chế độ Nấu</strong> để xem chữ to, rõ ràng khi đứng trong bếp.",
+        helpSec3Point2: "<strong>Màn hình luôn sáng:</strong> Màn hình thiết bị sẽ không bị tắt trong lúc bạn đang nấu.",
+        helpSec3Point3: "<strong>Hẹn giờ tiện lợi:</strong> Nhấn vào các nút hẹn giờ xuất hiện trong hướng dẫn để đếm ngược.",
+        helpSec4Title: "4. Lưu, Đánh giá và Gắn thẻ",
+        helpSec4Point1: "<strong>Lưu trữ:</strong> Nhấn <strong>Lưu vào SQLite</strong> để lưu công thức vĩnh viễn.",
+        helpSec4Point2: "<strong>Số sao:</strong> Đánh giá từ 1 đến 5 sao cho món ăn yêu thích.",
+        helpSec4Point3: "<strong>Độ khó:</strong> Nhấn để đổi giữa 🟢 Dễ, 🟡 Vừa và 🔴 Khó.",
+        helpSec4Point4: "<strong>Bộ lọc thẻ:</strong> Nhấn vào các thẻ (Gà, Mì,...) để tìm kiếm nhanh.",
+        helpSec5Title: "5. Chọn ngôn ngữ",
+        helpSec5Body: "Chọn ngôn ngữ bạn muốn từ menu ở góc trên bất cứ lúc nào.",
         addRecipe: "Thêm công thức",
         saved: "Đã lưu",
         tabText: "📝 Văn bản / Chú thích",
@@ -970,10 +1523,72 @@
         deleteSuccess: "🗑️ Đã xóa công thức thành công.",
         pasteFirst: "Vui lòng dán văn bản công thức trước!",
         selectImageFirst: "Vui lòng chọn hình ảnh trước!",
-        allStepsDone: "🎉 Chúc mừng! Bạn đã hoàn thành tất cả các bước."
+        allStepsDone: "🎉 Chúc mừng! Bạn đã hoàn thành tất cả các bước.",
+        tipChooseLang: "Chọn ngôn ngữ bạn muốn sử dụng",
+        tipHelp: "Xem hướng dẫn sử dụng Recipe Deck",
+        tipAddRecipe: "Xóa màn hình để bắt đầu tạo công thức mới",
+        tipSavedCount: "Tổng số công thức đã lưu trong bộ sưu tập",
+        tipTabText: "Nhập hoặc dán văn bản công thức tại đây",
+        tipTabImage: "Tải lên hình ảnh hoặc ảnh chụp màn hình",
+        tipRawInput: "Dán văn bản hoặc danh sách nguyên liệu vào đây",
+        tipParseText: "Phân tích văn bản và tạo công thức chuẩn",
+        tipDropZone: "Nhấp hoặc kéo thả ảnh vào đây",
+        tipParseImage: "Quét ảnh bằng OCR để trích xuất công thức",
+        tipSearch: "Tìm kiếm theo tên công thức, nguyên liệu hoặc thẻ",
+        tipDbBadge: "Mọi công thức đều được lưu trong cơ sở dữ liệu SQLite",
+        tipMetric: "Hiển thị theo đơn vị gam (g) và mililit (ml)",
+        tipImperial: "Hiển thị theo đơn vị ounce (oz) và cốc (cup)",
+        tipFewerServings: "Giảm số khẩu phần",
+        tipMoreServings: "Tăng số khẩu phần",
+        tipCookMode: "Mở chế độ nấu toàn màn hình từng bước",
+        tipSave: "Lưu công thức vào bộ sưu tập",
+        tipPrint: "In công thức hoặc lưu thành tệp PDF",
+        tipAddNext: "Xóa màn hình để thêm công thức khác",
+        tipDelete: "Xóa công thức này",
+        tipClose: "Đóng khung xem công thức",
+        tipChangePhoto: "Chọn hình ảnh mới cho công thức này",
+        tipRemovePhoto: "Gỡ hình ảnh khỏi công thức",
+        tipAddPhoto: "Thêm ảnh món ăn (tự động nén)",
+        tipResetChecks: "Xóa toàn bộ đánh dấu",
+        tipDifficulty: "Đổi mức độ khó (Dễ / Vừa / Khó)",
+        tipStarRating: "Đánh giá công thức từ 1 đến 5 sao",
+        tipCheckIng: "Đánh dấu nguyên liệu đã chuẩn bị xong",
+        tipCheckInst: "Đánh dấu bước nấu đã hoàn thành",
+        tipWakeLock: "Giữ màn hình luôn sáng trong lúc nấu ăn",
+        tipCookIngredients: "Xem danh sách nguyên liệu mà không cần rời bước nấu",
+        tipFullscreen: "Bật/tắt chế độ toàn màn hình",
+        tipExitCook: "Thoát Chế độ Nấu và quay lại",
+        tipCookStepCheck: "Đánh dấu bước này đã hoàn thành",
+        tipPrevStep: "Quay lại bước trước",
+        tipNextStep: "Chuyển sang bước tiếp theo",
+        tipTagFilter: "Chỉ hiển thị công thức có thẻ này",
+        tipOpenRecipe: "Nhấp để mở công thức này",
+        tipDeleteRecipe: "Xóa công thức này khỏi bộ sưu tập"
       },
       zh: {
-        appSubtitle: "智能食谱解析、单位换算、照片附件、标签分类与互动烹饪模式",
+        appSubtitle: "智能识别食谱与照片，一键调整份量，大字步骤助您轻松下厨。",
+        help: "帮助",
+        helpModalTitle: "如何使用 Recipe Deck",
+        helpModalSubtitle: "简单易懂的食谱提取与下厨指南",
+        helpGotIt: "知道了！ 👍",
+        helpSec1Title: "1. 如何添加食谱",
+        helpSec1Body: "您可以通过两种极简方式添加食谱：",
+        helpSec1Point1: "<strong>粘贴文本：</strong> 复制食谱内容或文案，点击 <em>✨ 格式化并解析</em>。",
+        helpSec1Point2: "<strong>上传照片：</strong> 手机拍照或截图后拖入框中，点击 <em>🔍 OCR 图文识别并提取</em>。",
+        helpSec2Title: "2. 调整人数份量与计量单位",
+        helpSec2Point1: "<strong>调整份量：</strong> 点击 <strong>-</strong> 和 <strong>+</strong> 按钮，食材用量自动精确换算。",
+        helpSec2Point2: "<strong>切换单位：</strong> 可在 <strong>公制</strong>（克 / 毫升）与 <strong>英制</strong>（盎司 / 杯）间随时切换。",
+        helpSec3Title: "3. 烹饪模式与厨房定时器",
+        helpSec3Point1: "<strong>大字步骤：</strong> 点击 <strong>烹饪模式</strong>，字号超大清晰，站在料理台远处也能一目了然。",
+        helpSec3Point2: "<strong>屏幕常亮：</strong> 做菜过程中屏幕自动保持常亮，绝不黑屏。",
+        helpSec3Point3: "<strong>内置定时器：</strong> 识别到“烘烤20分钟”等步骤时会自动生成计时按钮，点击即可倒计时。",
+        helpSec4Title: "4. 保存、星级评分与标签分类",
+        helpSec4Point1: "<strong>保存收藏：</strong> 点击 <strong>保存至 SQLite</strong>，永久存储在本地数据库。",
+        helpSec4Point2: "<strong>星级评价：</strong> 点击 1 到 5 星，收藏您的最爱佳肴。",
+        helpSec4Point3: "<strong>烹饪难度：</strong> 🟢 简单、🟡 中等、🔴 困难 一键切换。",
+        helpSec4Point4: "<strong>分类标签：</strong> 点击侧边栏标签（如鸡肉、面食、快手菜）快速筛选。",
+        helpSec5Title: "5. 选择您的语言",
+        helpSec5Body: "随时可以在右上角菜单中切换为您偏好的语言。",
         addRecipe: "添加食谱",
         saved: "已保存",
         tabText: "📝 文本 / 说明",
@@ -1038,10 +1653,72 @@
         deleteSuccess: "🗑️ 食谱已删除。",
         pasteFirst: "请先粘贴食谱文本！",
         selectImageFirst: "请先选择图片！",
-        allStepsDone: "🎉 恭喜！您已完成该食谱的所有烹饪步骤。"
+        allStepsDone: "🎉 恭喜！您已完成该食谱的所有烹饪步骤。",
+        tipChooseLang: "选择您的偏好语言",
+        tipHelp: "查看 Recipe Deck 帮助指南",
+        tipAddRecipe: "清空界面以添加新食谱",
+        tipSavedCount: "已收藏保存的食谱总数",
+        tipTabText: "在此输入或粘贴食谱文本",
+        tipTabImage: "上传食谱照片或截图",
+        tipRawInput: "在此粘贴食谱文本或食材清单",
+        tipParseText: "智能解析文本并生成标准食谱",
+        tipDropZone: "点击或拖拽食谱照片到此处",
+        tipParseImage: "OCR识别图片并提取食谱",
+        tipSearch: "按食谱名称、食材或标签搜索",
+        tipDbBadge: "所有食谱均保存在本地 SQLite 数据库中",
+        tipMetric: "显示公制单位（克与毫升）",
+        tipImperial: "显示英制单位（盎司与杯）",
+        tipFewerServings: "减少就餐人数份量",
+        tipMoreServings: "增加就餐人数份量",
+        tipCookMode: "开启大屏烹饪模式逐步下厨",
+        tipSave: "将食谱保存到我的收藏",
+        tipPrint: "打印食谱或另存为 PDF",
+        tipAddNext: "清空当前界面添加下一道食谱",
+        tipDelete: "删除此食谱",
+        tipClose: "关闭食谱详情",
+        tipChangePhoto: "更换食谱照片",
+        tipRemovePhoto: "移除食谱照片",
+        tipAddPhoto: "添加成品照片（自动缩放）",
+        tipResetChecks: "重置所有食材和步骤的勾选状态",
+        tipDifficulty: "切换烹饪难度（简单/中等/困难）",
+        tipStarRating: "对食谱进行 1 到 5 星评分",
+        tipCheckIng: "勾选此食材为已准备好",
+        tipCheckInst: "标记此步骤为已完成",
+        tipWakeLock: "下厨时保持屏幕常亮不黑屏",
+        tipCookIngredients: "无需退出步骤即可查看食材清单",
+        tipFullscreen: "切换全屏显示模式",
+        tipExitCook: "退出烹饪模式并返回",
+        tipCookStepCheck: "将此步骤标记为已完成",
+        tipPrevStep: "返回上一步骤",
+        tipNextStep: "进入下一步骤",
+        tipTagFilter: "仅显示包含此标签的食谱",
+        tipOpenRecipe: "点击打开查看此食谱",
+        tipDeleteRecipe: "从收藏夹中删除此食谱"
       },
       pt: {
-        appSubtitle: "Extração clara, conversão de unidades, fotos anexadas, etiquetas e Modo Cozinha",
+        appSubtitle: "Transforme qualquer receita ou foto em passos fáceis, ajuste porções e cozinhe passo a passo.",
+        help: "Ajuda",
+        helpModalTitle: "Como usar o Recipe Deck",
+        helpModalSubtitle: "Guia simples e passo a passo para cozinhar e guardar receitas",
+        helpGotIt: "Entendi! 👍",
+        helpSec1Title: "1. Como adicionar uma receita",
+        helpSec1Body: "Você pode adicionar receitas de duas formas bem fáceis:",
+        helpSec1Point1: "<strong>Colar texto:</strong> Cole o texto ou publicação no campo e toque em <em>✨ Formatar e Extrair</em>.",
+        helpSec1Point2: "<strong>Enviar foto:</strong> Tire uma foto ou print e toque em <em>🔍 Extrair via OCR</em>.",
+        helpSec2Title: "2. Mudar porções e medidas",
+        helpSec2Point1: "<strong>Porções:</strong> Toque em <strong>-</strong> e <strong>+</strong> para recalcular todos os ingredientes.",
+        helpSec2Point2: "<strong>Unidades:</strong> Alterne entre <strong>Métrico</strong> (g / ml) e <strong>Imperial</strong> (oz / xícaras).",
+        helpSec3Title: "3. Modo Cozinha e temporizadores",
+        helpSec3Point1: "<strong>Passo a passo:</strong> Toque em <strong>Modo Cozinha</strong> para ver letras grandes e legíveis.",
+        helpSec3Point2: "<strong>Tela sempre ligada:</strong> A tela não desliga enquanto você cozinha.",
+        helpSec3Point3: "<strong>Temporizadores rápidos:</strong> Toque nos botões de tempo para iniciar a contagem regressiva.",
+        helpSec4Title: "4. Salvar, avaliar e organizar",
+        helpSec4Point1: "<strong>Salvar:</strong> Toque em <strong>Salvar no SQLite</strong> para guardar permanentemente.",
+        helpSec4Point2: "<strong>Estrelas:</strong> Avalie de 1 a 5 estrelas para destacar suas receitas favoritas.",
+        helpSec4Point3: "<strong>Dificuldade:</strong> Alterne entre 🟢 Fácil, 🟡 Média e 🔴 Difícil.",
+        helpSec4Point4: "<strong>Tags:</strong> Filtre sua coleção tocando nas etiquetas laterais.",
+        helpSec5Title: "5. Idioma preferido",
+        helpSec5Body: "Mude o idioma no topo da tela quando quiser.",
         addRecipe: "Adicionar Receita",
         saved: "Salvas",
         tabText: "📝 Texto / Legenda",
@@ -1106,7 +1783,47 @@
         deleteSuccess: "🗑️ Receita excluída com sucesso.",
         pasteFirst: "Por favor, cole o texto da receita primeiro!",
         selectImageFirst: "Por favor, selecione uma imagem primeiro!",
-        allStepsDone: "🎉 Parabéns! Você concluiu todos os passos desta receita."
+        allStepsDone: "🎉 Parabéns! Você concluiu todos os passos desta receita.",
+        tipChooseLang: "Escolha seu idioma de preferência",
+        tipHelp: "Aprenda a usar o Recipe Deck",
+        tipAddRecipe: "Limpar a tela e criar uma nova receita",
+        tipSavedCount: "Total de receitas salvas na sua coleção",
+        tipTabText: "Digite ou cole o texto da receita aqui",
+        tipTabImage: "Envie uma foto ou captura de tela",
+        tipRawInput: "Cole o texto da receita ou ingredientes aqui",
+        tipParseText: "Ler o texto e criar a receita formatada",
+        tipDropZone: "Clique ou arraste uma foto aqui",
+        tipParseImage: "Ler a foto com OCR e extrair a receita",
+        tipSearch: "Buscar por nome, ingrediente ou tag",
+        tipDbBadge: "Todas as receitas ficam salvas no SQLite",
+        tipMetric: "Mostrar em gramas e mililitros",
+        tipImperial: "Mostrar em onças e xícaras",
+        tipFewerServings: "Fazer menos porções",
+        tipMoreServings: "Fazer mais porções",
+        tipCookMode: "Abrir modo cozinha em tela cheia passo a passo",
+        tipSave: "Salvar receita na sua coleção",
+        tipPrint: "Imprimir ou salvar como PDF",
+        tipAddNext: "Limpar tela para adicionar outra receita",
+        tipDelete: "Excluir esta receita",
+        tipClose: "Fechar visualização da receita",
+        tipChangePhoto: "Escolher uma nova foto para esta receita",
+        tipRemovePhoto: "Remover a foto da receita",
+        tipAddPhoto: "Adicionar foto da receita (redimensionada)",
+        tipResetChecks: "Limpar todas as marcações",
+        tipDifficulty: "Mudar nível de dificuldade",
+        tipStarRating: "Avaliar receita de 1 a 5 estrelas",
+        tipCheckIng: "Marcar ingrediente como preparado",
+        tipCheckInst: "Marcar passo como concluído",
+        tipWakeLock: "Manter a tela ligada enquanto cozinha",
+        tipCookIngredients: "Ver lista de ingredientes sem sair do passo",
+        tipFullscreen: "Alternar modo tela cheia",
+        tipExitCook: "Sair do Modo Cozinha",
+        tipCookStepCheck: "Marcar este passo como concluído",
+        tipPrevStep: "Voltar para o passo anterior",
+        tipNextStep: "Avançar para o próximo passo",
+        tipTagFilter: "Mostrar apenas receitas com esta tag",
+        tipOpenRecipe: "Clique para abrir esta receita",
+        tipDeleteRecipe: "Excluir esta receita da coleção"
       }
     };
 
@@ -1135,31 +1852,70 @@
       return d;
     }
 
+    function openHelpModal() {
+      const modal = document.getElementById("helpModal");
+      if (modal) modal.classList.remove("hidden");
+    }
+
+    function closeHelpModal() {
+      const modal = document.getElementById("helpModal");
+      if (modal) modal.classList.add("hidden");
+    }
+
     function applySiteLanguage(lang) {
       currentSiteLang = lang || getSiteLanguage();
       const select = document.getElementById("siteLanguageSelect");
-      if (select) select.value = currentSiteLang;
+      if (select) {
+        select.value = currentSiteLang;
+        select.title = t("tipChooseLang");
+      }
+
+      const langCont = document.getElementById("siteLanguageContainer");
+      if (langCont) langCont.title = t("tipChooseLang");
 
       const appSub = document.getElementById("appSubtitleText");
       if (appSub) appSub.innerText = t("appSubtitle");
 
+      const headerHelp = document.getElementById("headerHelpLabel");
+      if (headerHelp) headerHelp.innerText = t("help");
+      const headerHelpBtn = document.getElementById("headerHelpBtn");
+      if (headerHelpBtn) headerHelpBtn.title = t("tipHelp");
+
       const headerAdd = document.getElementById("headerAddRecipeLabel");
       if (headerAdd) headerAdd.innerText = t("addRecipe");
+      const headerAddBtn = document.getElementById("headerAddRecipeBtn");
+      if (headerAddBtn) headerAddBtn.title = t("tipAddRecipe");
 
       const savedPrefix = document.getElementById("savedCountPrefix");
       if (savedPrefix) savedPrefix.innerText = t("saved");
+      const savedBadge = document.getElementById("savedCountBadge");
+      if (savedBadge) savedBadge.title = t("tipSavedCount");
 
       const tabText = document.getElementById("tabTextBtn");
-      if (tabText) tabText.innerText = t("tabText");
+      if (tabText) {
+        tabText.innerText = t("tabText");
+        tabText.title = t("tipTabText");
+      }
 
       const tabImg = document.getElementById("tabImageBtn");
-      if (tabImg) tabImg.innerText = t("tabImage");
+      if (tabImg) {
+        tabImg.innerText = t("tabImage");
+        tabImg.title = t("tipTabImage");
+      }
 
       const rawInput = document.getElementById("rawInput");
-      if (rawInput) rawInput.placeholder = t("rawPlaceholder");
+      if (rawInput) {
+        rawInput.placeholder = t("rawPlaceholder");
+        rawInput.title = t("tipRawInput");
+      }
 
+      const parseTextBtn = document.getElementById("parseTextBtn");
+      if (parseTextBtn) parseTextBtn.title = t("tipParseText");
       const parseTextBtnLabel = document.getElementById("parseTextBtnLabel");
       if (parseTextBtnLabel) parseTextBtnLabel.innerText = t("parseText");
+
+      const dropZone = document.getElementById("dropZone");
+      if (dropZone) dropZone.title = t("tipDropZone");
 
       const dropTitle = document.getElementById("dropPromptTitle");
       if (dropTitle) dropTitle.innerText = t("dropScreenshot");
@@ -1167,6 +1923,8 @@
       const dropSub = document.getElementById("dropPromptSub");
       if (dropSub) dropSub.innerText = t("dropSupported");
 
+      const parseImgBtn = document.getElementById("parseImageBtn");
+      if (parseImgBtn) parseImgBtn.title = t("tipParseImage");
       const parseImgBtnLabel = document.getElementById("parseImageBtnLabel");
       if (parseImgBtnLabel) parseImgBtnLabel.innerText = t("parseImage");
 
@@ -1174,10 +1932,16 @@
       if (colTitle) colTitle.innerText = t("collectionTitle");
 
       const colDb = document.getElementById("collectionDbBadge");
-      if (colDb) colDb.innerText = t("dbBadge");
+      if (colDb) {
+        colDb.innerText = t("dbBadge");
+        colDb.title = t("tipDbBadge");
+      }
 
       const searchInput = document.getElementById("sidebarSearchInput");
-      if (searchInput) searchInput.placeholder = t("searchPlaceholder");
+      if (searchInput) {
+        searchInput.placeholder = t("searchPlaceholder");
+        searchInput.title = t("tipSearch");
+      }
 
       const emptyTitle = document.getElementById("emptyStateTitle");
       if (emptyTitle) emptyTitle.innerText = t("noRecipeTitle");
@@ -1186,52 +1950,142 @@
       if (emptySub) emptySub.innerText = t("noRecipeSub");
 
       const btnMetric = document.getElementById("btnMetric");
-      if (btnMetric) btnMetric.innerText = t("metricBtn");
+      if (btnMetric) {
+        btnMetric.innerText = t("metricBtn");
+        btnMetric.title = t("tipMetric");
+      }
 
       const btnImperial = document.getElementById("btnImperial");
-      if (btnImperial) btnImperial.innerText = t("imperialBtn");
+      if (btnImperial) {
+        btnImperial.innerText = t("imperialBtn");
+        btnImperial.title = t("tipImperial");
+      }
 
       const servingsLabel = document.getElementById("servingsLabelText");
       if (servingsLabel) servingsLabel.innerText = t("servingsLabel");
 
+      const cookModeBtn = document.getElementById("cookModeBtn");
+      if (cookModeBtn) cookModeBtn.title = t("tipCookMode");
       const cookModeLabel = document.getElementById("cookModeBtnLabel");
       if (cookModeLabel) cookModeLabel.innerText = t("cookModeBtn");
 
+      const saveBtn = document.getElementById("saveBtn");
+      if (saveBtn) saveBtn.title = t("tipSave");
+
+      const printBtn = document.getElementById("printBtn");
+      if (printBtn) printBtn.title = t("tipPrint");
       const printLabel = document.getElementById("printBtnLabel");
       if (printLabel) printLabel.innerText = t("printBtn");
 
+      const addNextBtn = document.getElementById("addNextBtn");
+      if (addNextBtn) addNextBtn.title = t("tipAddNext");
       const addNextLabel = document.getElementById("addNextBtnLabel");
       if (addNextLabel) addNextLabel.innerText = t("addNextBtn");
 
+      const deleteBtn = document.getElementById("deleteBtn");
+      if (deleteBtn) deleteBtn.title = t("tipDelete");
       const deleteLabel = document.getElementById("deleteBtnLabel");
       if (deleteLabel) deleteLabel.innerText = t("deleteBtn");
+
+      const closeRecipeBtn = document.getElementById("closeRecipeBtn");
+      if (closeRecipeBtn) closeRecipeBtn.title = t("tipClose");
 
       const photoAttachedLabel = document.getElementById("photoAttachedLabel");
       if (photoAttachedLabel) photoAttachedLabel.innerText = t("attachedPhoto");
 
+      const changePhotoBtn = document.getElementById("changePhotoBtn");
+      if (changePhotoBtn) changePhotoBtn.title = t("tipChangePhoto");
       const changePhotoLabel = document.getElementById("changePhotoLabel");
       if (changePhotoLabel) changePhotoLabel.innerText = t("changePhoto");
 
+      const removePhotoBtn = document.getElementById("removePhotoBtn");
+      if (removePhotoBtn) removePhotoBtn.title = t("tipRemovePhoto");
       const removePhotoLabel = document.getElementById("removePhotoLabel");
       if (removePhotoLabel) removePhotoLabel.innerText = t("removePhoto");
 
+      const photoDropZone = document.getElementById("recipePhotoDropZone");
+      if (photoDropZone) photoDropZone.title = t("tipAddPhoto");
       const photoDropPrompt = document.getElementById("recipePhotoDropPromptText");
       if (photoDropPrompt) photoDropPrompt.innerText = t("addPhotoPrompt");
 
       const resetChecksBtn = document.getElementById("resetChecksBtn");
-      if (resetChecksBtn) resetChecksBtn.innerText = "🔄 " + t("resetChecks");
+      if (resetChecksBtn) {
+        resetChecksBtn.innerText = "🔄 " + t("resetChecks");
+        resetChecksBtn.title = t("tipResetChecks");
+      }
 
       const diffPrefix = document.getElementById("difficultyPrefixLabel");
       if (diffPrefix) diffPrefix.innerText = t("difficulty");
+      const diffBtn = document.getElementById("difficultyBtn");
+      if (diffBtn) diffBtn.title = t("tipDifficulty");
 
       const ratingPrefix = document.getElementById("ratingPrefixLabel");
       if (ratingPrefix) ratingPrefix.innerText = t("rating");
+      const starRatingContainer = document.getElementById("starRatingContainer");
+      if (starRatingContainer) starRatingContainer.title = t("tipStarRating");
 
       const ingSecTitle = document.getElementById("ingredientsSectionTitle");
       if (ingSecTitle) ingSecTitle.innerText = t("ingredients");
 
       const instSecTitle = document.getElementById("instructionsSectionTitle");
       if (instSecTitle) instSecTitle.innerText = t("instructions");
+
+      // Cook Mode Elements
+      const cookExitLabel = document.getElementById("cookExitLabel");
+      if (cookExitLabel) cookExitLabel.innerText = t("closeDrawer");
+      const cookDrawerBtnText = document.getElementById("cookDrawerBtnText");
+      if (cookDrawerBtnText) cookDrawerBtnText.innerText = t("ingredientsDrawer");
+      const cookPrevBtnLabel = document.getElementById("cookPrevBtnLabel");
+      if (cookPrevBtnLabel) cookPrevBtnLabel.innerText = t("prevStep");
+
+      // Help Modal Elements
+      const helpModalTitle = document.getElementById("helpModalTitle");
+      if (helpModalTitle) helpModalTitle.innerText = t("helpModalTitle");
+      const helpModalSub = document.getElementById("helpModalSubtitle");
+      if (helpModalSub) helpModalSub.innerText = t("helpModalSubtitle");
+      const helpGotItBtn = document.getElementById("helpModalCloseBtn");
+      if (helpGotItBtn) helpGotItBtn.innerText = t("helpGotIt");
+
+      const h1T = document.getElementById("helpSec1Title");
+      if (h1T) h1T.innerText = t("helpSec1Title");
+      const h1B = document.getElementById("helpSec1Body");
+      if (h1B) h1B.innerText = t("helpSec1Body");
+      const h1P1 = document.getElementById("helpSec1Point1");
+      if (h1P1) h1P1.innerHTML = t("helpSec1Point1");
+      const h1P2 = document.getElementById("helpSec1Point2");
+      if (h1P2) h1P2.innerHTML = t("helpSec1Point2");
+
+      const h2T = document.getElementById("helpSec2Title");
+      if (h2T) h2T.innerText = t("helpSec2Title");
+      const h2P1 = document.getElementById("helpSec2Point1");
+      if (h2P1) h2P1.innerHTML = t("helpSec2Point1");
+      const h2P2 = document.getElementById("helpSec2Point2");
+      if (h2P2) h2P2.innerHTML = t("helpSec2Point2");
+
+      const h3T = document.getElementById("helpSec3Title");
+      if (h3T) h3T.innerText = t("helpSec3Title");
+      const h3P1 = document.getElementById("helpSec3Point1");
+      if (h3P1) h3P1.innerHTML = t("helpSec3Point1");
+      const h3P2 = document.getElementById("helpSec3Point2");
+      if (h3P2) h3P2.innerHTML = t("helpSec3Point2");
+      const h3P3 = document.getElementById("helpSec3Point3");
+      if (h3P3) h3P3.innerHTML = t("helpSec3Point3");
+
+      const h4T = document.getElementById("helpSec4Title");
+      if (h4T) h4T.innerText = t("helpSec4Title");
+      const h4P1 = document.getElementById("helpSec4Point1");
+      if (h4P1) h4P1.innerHTML = t("helpSec4Point1");
+      const h4P2 = document.getElementById("helpSec4Point2");
+      if (h4P2) h4P2.innerHTML = t("helpSec4Point2");
+      const h4P3 = document.getElementById("helpSec4Point3");
+      if (h4P3) h4P3.innerHTML = t("helpSec4Point3");
+      const h4P4 = document.getElementById("helpSec4Point4");
+      if (h4P4) h4P4.innerHTML = t("helpSec4Point4");
+
+      const h5T = document.getElementById("helpSec5Title");
+      if (h5T) h5T.innerText = t("helpSec5Title");
+      const h5B = document.getElementById("helpSec5Body");
+      if (h5B) h5B.innerText = t("helpSec5Body");
 
       // Re-render active recipe, tags, and sidebar
       if (activeRecipe) renderRecipe();
@@ -1840,6 +2694,7 @@
           : '';
 
         const li = document.createElement("li");
+        li.title = t("tipCheckIng");
         li.className = `p-3 rounded-lg border transition cursor-pointer flex items-start gap-3 select-none ${
           isChecked 
             ? "bg-slate-900/30 border-slate-800 text-slate-500 line-through" 
@@ -1874,6 +2729,7 @@
         const isChecked = checkedInstructions.has(idx);
 
         const li = document.createElement("li");
+        li.title = t("tipCheckInst");
         li.className = `p-3 rounded-lg border transition cursor-pointer flex items-start gap-3 select-none ${
           isChecked 
             ? "bg-slate-900/30 border-slate-800 text-slate-500 line-through" 
@@ -2619,7 +3475,7 @@
           : "bg-slate-900 border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600";
 
         return `
-          <button onclick="selectTagFilter('${tag}')" class="px-2.5 py-1 rounded-lg text-xs whitespace-nowrap transition flex items-center gap-1 ${activeClass}">
+          <button onclick="selectTagFilter('${tag}')" class="px-2.5 py-1 rounded-lg text-xs whitespace-nowrap transition flex items-center gap-1 cursor-pointer ${activeClass}" title="${t("tipTagFilter")}: ${tag}">
             <span>${tag}</span>
             <span class="text-[10px] opacity-75">(${count})</span>
           </button>
@@ -2661,7 +3517,7 @@
         }
 
         return `
-          <div onclick="loadSavedRecipe(${r.id})" class="flex items-center gap-3 p-2 bg-slate-900/80 hover:bg-slate-700/60 rounded-xl cursor-pointer border border-slate-800 transition group">
+          <div onclick="loadSavedRecipe(${r.id})" class="flex items-center gap-3 p-2 bg-slate-900/80 hover:bg-slate-700/60 rounded-xl cursor-pointer border border-slate-800 transition group" title="${t("tipOpenRecipe")}: ${r.title}">
             ${thumb}
             <div class="flex-1 min-w-0">
               <div class="font-medium text-slate-200 truncate text-sm flex items-center justify-between gap-1">
@@ -2676,7 +3532,7 @@
                 ${tagBadges}
               </div>
             </div>
-            <button onclick="deleteRecipe(${r.id}, event)" class="p-1 text-slate-500 hover:text-rose-400 text-xs transition" title="Delete recipe">✕</button>
+            <button onclick="deleteRecipe(${r.id}, event)" class="p-1 text-slate-500 hover:text-rose-400 text-xs transition cursor-pointer" title="${t("tipDeleteRecipe")}">✕</button>
           </div>
         `;
       }).join("");
@@ -2688,6 +3544,16 @@
       renderTagFilterPills();
       filterSavedRecipes();
     }
+
+    // Global Keydown Handlers (ESC to close help modal)
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        const helpModal = document.getElementById("helpModal");
+        if (helpModal && !helpModal.classList.contains("hidden")) {
+          closeHelpModal();
+        }
+      }
+    });
 
     // Startup Initialization
     applySiteLanguage(getSiteLanguage());
