@@ -353,7 +353,10 @@ app.delete("/api/recipes/:id", async (req, res) => {
   }
 });
 
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`\n🚀 Recipe App running at http://localhost:${port}`);
 });
+
+// Keep process active
+setInterval(() => {}, 1000 * 60 * 60);
 

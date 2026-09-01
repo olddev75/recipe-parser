@@ -674,6 +674,19 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ rawText })
         });
+
+        if (!res.ok) {
+          let errorMsg = `Server error (${res.status})`;
+          try {
+            const errData = await res.json();
+            if (errData.error) errorMsg = errData.error;
+          } catch (e) {
+            const raw = await res.text();
+            if (raw) errorMsg = raw.slice(0, 150);
+          }
+          throw new Error(errorMsg);
+        }
+
         const data = await res.json();
         if (data.error) throw new Error(data.error);
 
@@ -702,6 +715,19 @@
             mimeType: selectedImageMime
           })
         });
+
+        if (!res.ok) {
+          let errorMsg = `Server error (${res.status})`;
+          try {
+            const errData = await res.json();
+            if (errData.error) errorMsg = errData.error;
+          } catch (e) {
+            const raw = await res.text();
+            if (raw) errorMsg = raw.slice(0, 150);
+          }
+          throw new Error(errorMsg);
+        }
+
         const data = await res.json();
         if (data.error) throw new Error(data.error);
 
@@ -769,6 +795,18 @@
             targetLanguage: targetLang
           })
         });
+
+        if (!res.ok) {
+          let errorMsg = `Server error (${res.status})`;
+          try {
+            const errData = await res.json();
+            if (errData.error) errorMsg = errData.error;
+          } catch (e) {
+            const raw = await res.text();
+            if (raw) errorMsg = raw.slice(0, 150);
+          }
+          throw new Error(errorMsg);
+        }
 
         const data = await res.json();
         if (data.error) throw new Error(data.error);
