@@ -51,16 +51,16 @@
         <div id="siteLanguageContainer" class="flex items-center bg-slate-800/90 border border-slate-700 rounded-lg px-2.5 py-1.5 shadow-sm" title="Choose your preferred language">
           <span class="text-xs text-slate-400 mr-1.5">🌐</span>
           <select id="siteLanguageSelect" onchange="changeSiteLanguage(this.value)" class="bg-transparent text-slate-200 text-xs font-semibold focus:outline-none cursor-pointer pr-1" title="Choose your preferred language">
-            <option value="en">English (EN)</option>
-            <option value="es">Español (ES)</option>
-            <option value="fr">Français (FR)</option>
-            <option value="de">Deutsch (DE)</option>
-            <option value="it">Italiano (IT)</option>
-            <option value="th">ไทย (TH)</option>
-            <option value="ja">日本語 (JA)</option>
-            <option value="vi">Tiếng Việt (VI)</option>
-            <option value="zh">中文 (ZH)</option>
-            <option value="pt">Português (PT)</option>
+            <option value="en" class="bg-slate-900 text-slate-100">English (EN)</option>
+            <option value="es" class="bg-slate-900 text-slate-100">Español (ES)</option>
+            <option value="fr" class="bg-slate-900 text-slate-100">Français (FR)</option>
+            <option value="de" class="bg-slate-900 text-slate-100">Deutsch (DE)</option>
+            <option value="it" class="bg-slate-900 text-slate-100">Italiano (IT)</option>
+            <option value="th" class="bg-slate-900 text-slate-100">ไทย (TH)</option>
+            <option value="ja" class="bg-slate-900 text-slate-100">日本語 (JA)</option>
+            <option value="vi" class="bg-slate-900 text-slate-100">Tiếng Việt (VI)</option>
+            <option value="zh" class="bg-slate-900 text-slate-100">中文 (ZH)</option>
+            <option value="pt" class="bg-slate-900 text-slate-100">Português (PT)</option>
           </select>
         </div>
 
@@ -6443,7 +6443,8 @@ function sanitizeAndExtractIngredient(ing) {
     });
 
     // Startup Initialization
-    applySiteLanguage(getSiteLanguage());
+    currentSiteLang = getSiteLanguage();
+    applySiteLanguage(currentSiteLang);
     checkActiveUser();
     updateSavedUI();
 
