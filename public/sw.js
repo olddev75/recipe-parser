@@ -7,8 +7,8 @@
 //     + offline fallback JSON error to toast in UI
 // =============================================================================
 
-const CACHE_NAME = "recipe-deck-v3";
-const RECIPES_CACHE = "recipe-deck-api-v3";
+const CACHE_NAME = "recipe-deck-v4";
+const RECIPES_CACHE = "recipe-deck-api-v4";
 
 const APP_SHELL = [
   "/",
@@ -65,19 +65,21 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // ── 3. App Shell (HTML, manifest, icons) — Cache-First ───────────────────
+  // ── 3. App Shell (HTML, manifest) — Network-First (always fresh when online) ─────
   if (
     url.pathname === "/" ||
     url.pathname.endsWith(".html") ||
-    url.pathname.startsWith("/icons/") ||
     url.pathname === "/manifest.json"
   ) {
-    event.respondWith(cacheFirst(request, CACHE_NAME));
+    event.respondWith(networkFirst(request, CACHE_NAME));
     return;
   }
 
-  // ── 4. Tailwind CDN — Cache-First (update only on new SW version) ─────────
-  if (url.hostname === "cdn.tailwindcss.com") {
+  // ── 4. App Icons & Tailwind CDN — Cache-First ──────────────────────────────
+  if (
+    url.pathname.startsWith("/icons/") ||
+    url.hostname === "cdn.tailwindcss.com"
+  ) {
     event.respondWith(cacheFirst(request, CACHE_NAME));
     return;
   }
